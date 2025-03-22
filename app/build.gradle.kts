@@ -119,4 +119,7 @@ dependencies {
     
     // LocalBroadcastManager
     implementation("androidx.localbroadcastmanager:localbroadcastmanager:1.1.0")
+
+    // Splash screen
+    implementation("androidx.core:core-splashscreen:1.0.1")
 }

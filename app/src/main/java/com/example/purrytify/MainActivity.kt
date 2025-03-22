@@ -1,6 +1,8 @@
 package com.example.purrytify
 
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
@@ -18,11 +20,19 @@ import com.example.purrytify.ui.components.BottomNavigation
 import com.example.purrytify.ui.navigation.NavGraph
 import com.example.purrytify.ui.theme.PurrytifyTheme
 import dagger.hilt.android.AndroidEntryPoint
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
+        val splashScreen = installSplashScreen()
         super.onCreate(savedInstanceState)
+
+        // Keep splash screen shown for 2 seconds
+        Handler(Looper.getMainLooper()).postDelayed({
+            splashScreen.setKeepOnScreenCondition { false }
+        }, 2000)
+
         setContent {
             PurrytifyTheme {
                 PurrytifyApp()

@@ -1,7 +1,6 @@
 package com.example.purrytify.ui.components
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -10,7 +9,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -25,8 +23,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.example.purrytify.domain.model.Song
 import com.example.purrytify.ui.theme.PurritifyRed
-import com.example.purrytify.ui.theme.PurrytifyBlack
 import com.example.purrytify.ui.theme.PurrytifyDarkGray
 import com.example.purrytify.ui.theme.PurrytifyLightGray
 import com.example.purrytify.ui.theme.PurrytifyLighterBlack
@@ -36,12 +34,13 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LogoutModalBottomSheet(
+fun DeleteSongConfirmationSheet(
     isVisible: Boolean,
+    song: Song?,
     onDismiss: () -> Unit,
-    onConfirm: () -> Unit
+    onConfirmDelete: (Song) -> Unit
 ) {
-    if (isVisible) {
+    if (isVisible && song != null) {
         val sheetState = rememberModalBottomSheetState(
             skipPartiallyExpanded = true
         )
@@ -76,7 +75,7 @@ fun LogoutModalBottomSheet(
             ) {
                 // Title
                 Text(
-                    text = "Logout",
+                    text = "Delete Song",
                     style = Typography.titleLarge,
                     color = PurrytifyWhite,
                     fontWeight = FontWeight.Bold,
@@ -88,7 +87,7 @@ fun LogoutModalBottomSheet(
                 
                 // Confirmation message
                 Text(
-                    text = "Are you sure you want to logout?",
+                    text = "Are you sure you want to delete \"${song.title}\" by ${song.artist}?",
                     style = Typography.bodyLarge,
                     color = PurrytifyLightGray,
                     textAlign = TextAlign.Center,
@@ -97,12 +96,12 @@ fun LogoutModalBottomSheet(
                 
                 Spacer(modifier = Modifier.height(32.dp))
                 
-                // Yes button
+                // Delete button
                 Button(
                     onClick = {
                         scope.launch {
                             sheetState.hide()
-                            onConfirm()
+                            onConfirmDelete(song)
                         }
                     },
                     modifier = Modifier
@@ -115,7 +114,7 @@ fun LogoutModalBottomSheet(
                     )
                 ) {
                     Text(
-                        text = "Yes",
+                        text = "Delete",
                         style = Typography.bodyLarge,
                         fontWeight = FontWeight.Medium
                     )

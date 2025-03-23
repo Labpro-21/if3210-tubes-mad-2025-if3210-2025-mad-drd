@@ -8,6 +8,7 @@ import androidx.navigation.compose.composable
 import com.example.purrytify.ui.screens.auth.LoginScreen
 import com.example.purrytify.ui.screens.home.HomeScreen
 import com.example.purrytify.ui.screens.library.LibraryScreen
+import com.example.purrytify.ui.screens.library.LibraryViewModel
 import com.example.purrytify.ui.screens.player.PlayerScreen
 import com.example.purrytify.ui.screens.profile.ProfileScreen
 
@@ -23,7 +24,8 @@ sealed class Screen(val route: String) {
 fun NavGraph(
     navController: NavHostController,
     modifier: Modifier = Modifier,
-    startDestination: String = Screen.Login.route
+    startDestination: String = Screen.Login.route,
+    viewModel: LibraryViewModel? = null
 ) {
     NavHost(
         navController = navController,
@@ -49,11 +51,20 @@ fun NavGraph(
         }
         
         composable(Screen.Library.route) {
-            LibraryScreen(
-                onNavigateToPlayer = { songId ->
-                    navController.navigate("${Screen.Player.route}/$songId")
-                }
-            )
+            if (viewModel != null) {
+                LibraryScreen(
+                    onNavigateToPlayer = { songId ->
+                        navController.navigate("${Screen.Player.route}/$songId")
+                    },
+                    viewModel = viewModel
+                )
+            } else {
+                LibraryScreen(
+                    onNavigateToPlayer = { songId ->
+                        navController.navigate("${Screen.Player.route}/$songId")
+                    }
+                )
+            }
         }
         
         composable(Screen.Profile.route) {
@@ -68,12 +79,22 @@ fun NavGraph(
         
         composable("${Screen.Player.route}/{songId}") { backStackEntry ->
             val songId = backStackEntry.arguments?.getString("songId")
-            PlayerScreen(
-                songId = songId,
-                onNavigateBack = {
-                    navController.navigateUp()
-                }
-            )
+            if (viewModel != null) {
+                PlayerScreen(
+                    songId = songId,
+                    onNavigateBack = {
+                        navController.navigateUp()
+                    },
+                    viewModel = viewModel
+                )
+            } else {
+                PlayerScreen(
+                    songId = songId,
+                    onNavigateBack = {
+                        navController.navigateUp()
+                    }
+                )
+            }
         }
     }
 }

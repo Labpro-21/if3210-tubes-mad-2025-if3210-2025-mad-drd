@@ -1,26 +1,26 @@
 package com.example.purrytify
 
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.purrytify.ui.components.BottomNavigation
 import com.example.purrytify.ui.navigation.NavGraph
 import com.example.purrytify.ui.theme.PurrytifyTheme
 import dagger.hilt.android.AndroidEntryPoint
-import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import android.os.Handler
+import android.os.Looper
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -40,34 +40,45 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
-
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PurrytifyApp() {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
-    
-    Surface(
-        modifier = Modifier.fillMaxSize(),
-        color = MaterialTheme.colorScheme.background
+
+    Box(
+        modifier = Modifier.fillMaxSize()
     ) {
-        Scaffold(
-            bottomBar = {
-                // Only show bottom nav when on main screens
-                if (currentRoute in listOf("home", "library", "profile")) {
-                    BottomNavigation(navController = navController)
-                }
-            }
-        ) { innerPadding ->
-            // Main content
+        // Main content area
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(bottom = if (shouldShowBottomNav(currentRoute)) 80.dp else 0.dp)
+        ) {
             NavGraph(
                 navController = navController,
-                modifier = Modifier.padding(innerPadding)
+                modifier = Modifier.fillMaxSize()
             )
-            
-            // Mini player (will be conditionally shown when a song is playing)
-            // MiniPlayer()
         }
+
+        // Bottom navigation
+        if (shouldShowBottomNav(currentRoute)) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+            ) {
+                BottomNavigation(navController = navController)
+            }
+        }
+
+        // if (isSongPlaying) {
+        //    MiniPlayer(modifier = Modifier.align(Alignment.BottomCenter))
+        // }
     }
+}
+
+// Helper function to determine if bottom nav should be shown
+private fun shouldShowBottomNav(currentRoute: String?): Boolean {
+    return currentRoute in listOf("home", "library", "profile")
 }

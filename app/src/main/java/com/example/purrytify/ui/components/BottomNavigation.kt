@@ -68,18 +68,18 @@ fun BottomNavigation(navController: NavController) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
-    Column ( modifier = Modifier.fillMaxWidth() ) {
+    Column(modifier = Modifier.fillMaxWidth()) {
         Divider(
             color = PurrytifyLightGray,
             thickness = 2.dp
         )
 
         NavigationBar(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(76.dp)
-                    .shadow(8.dp)
-                    .background(PurrytifyBlack),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(76.dp)
+                .shadow(8.dp)
+                .background(PurrytifyBlack),
             containerColor = PurrytifyBlack,
             contentColor = PurrytifyWhite,
             tonalElevation = 0.dp

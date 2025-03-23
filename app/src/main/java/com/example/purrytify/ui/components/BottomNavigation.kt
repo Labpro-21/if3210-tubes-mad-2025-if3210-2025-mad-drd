@@ -1,9 +1,9 @@
 package com.example.purrytify.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
@@ -12,6 +12,7 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.LibraryMusic
 import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -66,62 +67,69 @@ fun BottomNavigation(navController: NavController) {
     
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
-    
-    NavigationBar(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(76.dp)
-            .shadow(8.dp)
-            .background(PurrytifyBlack),
-        containerColor = PurrytifyBlack,
-        contentColor = PurrytifyWhite,
-        tonalElevation = 0.dp
-    ) {
-        items.forEach { item ->
-            val selected = currentRoute == item.route
-            
-            NavigationBarItem(
-                icon = { 
-                    Icon(
-                        imageVector = if (selected) item.selectedIcon else item.unselectedIcon,
-                        contentDescription = item.title,
-                        modifier = Modifier.size(24.dp),
-                        tint = if (selected) PurrytifyGreen else PurrytifyLightGray
-                    )
-                },
-                label = { 
-                    Text(
-                        text = item.title,
-                        fontFamily = Poppins,
-                        fontSize = 12.sp,
-                        fontWeight = if (selected) FontWeight.Medium else FontWeight.Normal
-                    ) 
-                },
-                selected = selected,
-                onClick = {
-                    if (currentRoute != item.route) {
-                        navController.navigate(item.route) {
-                            // Pop up to the start destination of the graph to
-                            // avoid building up a large stack of destinations
-                            popUpTo(Screen.Home.route) {
-                                saveState = true
+
+    Column ( modifier = Modifier.fillMaxWidth() ) {
+        Divider(
+            color = PurrytifyLightGray,
+            thickness = 2.dp
+        )
+
+        NavigationBar(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(76.dp)
+                    .shadow(8.dp)
+                    .background(PurrytifyBlack),
+            containerColor = PurrytifyBlack,
+            contentColor = PurrytifyWhite,
+            tonalElevation = 0.dp
+        ) {
+            items.forEach { item ->
+                val selected = currentRoute == item.route
+
+                NavigationBarItem(
+                    icon = {
+                        Icon(
+                            imageVector = if (selected) item.selectedIcon else item.unselectedIcon,
+                            contentDescription = item.title,
+                            modifier = Modifier.size(24.dp),
+                            tint = if (selected) PurrytifyGreen else PurrytifyLightGray
+                        )
+                    },
+                    label = {
+                        Text(
+                            text = item.title,
+                            fontFamily = Poppins,
+                            fontSize = 12.sp,
+                            fontWeight = if (selected) FontWeight.Medium else FontWeight.Normal
+                        )
+                    },
+                    selected = selected,
+                    onClick = {
+                        if (currentRoute != item.route) {
+                            navController.navigate(item.route) {
+                                // Pop up to the start destination of the graph to
+                                // avoid building up a large stack of destinations
+                                popUpTo(Screen.Home.route) {
+                                    saveState = true
+                                }
+                                // Avoid multiple copies of the same destination when
+                                // reselecting the same item
+                                launchSingleTop = true
+                                // Restore state when reselecting a previously selected item
+                                restoreState = true
                             }
-                            // Avoid multiple copies of the same destination when
-                            // reselecting the same item
-                            launchSingleTop = true
-                            // Restore state when reselecting a previously selected item
-                            restoreState = true
                         }
-                    }
-                },
-                colors = NavigationBarItemDefaults.colors(
-                    selectedIconColor = PurrytifyGreen,
-                    selectedTextColor = PurrytifyGreen,
-                    indicatorColor = PurrytifyBlack,
-                    unselectedIconColor = PurrytifyLightGray,
-                    unselectedTextColor = PurrytifyLightGray
+                    },
+                    colors = NavigationBarItemDefaults.colors(
+                        selectedIconColor = PurrytifyGreen,
+                        selectedTextColor = PurrytifyGreen,
+                        indicatorColor = PurrytifyBlack,
+                        unselectedIconColor = PurrytifyLightGray,
+                        unselectedTextColor = PurrytifyLightGray
+                    )
                 )
-            )
+            }
         }
     }
 }

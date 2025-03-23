@@ -19,22 +19,21 @@ import com.example.purrytify.ui.components.BottomNavigation
 import com.example.purrytify.ui.navigation.NavGraph
 import com.example.purrytify.ui.theme.PurrytifyTheme
 import dagger.hilt.android.AndroidEntryPoint
-import android.os.Handler
-import android.os.Looper
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         val splashScreen = installSplashScreen()
-        super.onCreate(savedInstanceState)
+        var isAppReady = false
 
-        // Keep splash screen shown for 2 seconds
-        Handler(Looper.getMainLooper()).postDelayed({
-            splashScreen.setKeepOnScreenCondition { false }
-        }, 2000)
+        // Keep splash screen until content is ready
+        splashScreen.setKeepOnScreenCondition { !isAppReady }
+
+        super.onCreate(savedInstanceState)
 
         setContent {
             PurrytifyTheme {
+                isAppReady = true
                 PurrytifyApp()
             }
         }
@@ -53,7 +52,7 @@ fun PurrytifyApp() {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(bottom = if (shouldShowBottomNav(currentRoute)) 80.dp else 0.dp)
+                .padding(bottom = if (shouldShowBottomNav(currentRoute)) 78.dp else 0.dp)
         ) {
             NavGraph(
                 navController = navController,

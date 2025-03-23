@@ -469,17 +469,24 @@ fun LoginScreen(
                         shape = CircleShape,
                         colors = ButtonDefaults.buttonColors(
                             containerColor = PurrytifyGreen,
-                            contentColor = PurrytifyWhite
+                            contentColor = PurrytifyWhite,
+                            disabledContainerColor = PurrytifyGreen.copy(alpha = 0.5f),
+                            disabledContentColor = PurrytifyWhite.copy(alpha = 0.7f)
                         ),
                         enabled = loginUiState !is LoginUiState.Loading
                     ) {
-                        if (loginUiState is LoginUiState.Loading) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(24.dp),
-                                color = PurrytifyWhite,
-                                strokeWidth = 2.dp
-                            )
-                        } else {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            if (loginUiState is LoginUiState.Loading) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(20.dp),
+                                    color = PurrytifyWhite.copy(alpha = 0.7f),
+                                    strokeWidth = 2.dp
+                                )
+                                Spacer(modifier = Modifier.width(12.dp))
+                            }
                             Text(
                                 text = "Log In",
                                 style = Typography.titleMedium

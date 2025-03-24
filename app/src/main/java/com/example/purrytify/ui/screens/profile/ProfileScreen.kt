@@ -26,6 +26,7 @@ import coil.request.ImageRequest
 import com.example.purrytify.R
 import com.example.purrytify.ui.components.EditProfileModalBottomSheet
 import com.example.purrytify.ui.components.LogoutModalBottomSheet
+import com.example.purrytify.ui.components.NoInternetScreen
 import com.example.purrytify.ui.theme.*
 import java.io.File
 import java.io.FileOutputStream
@@ -34,8 +35,15 @@ import java.io.FileOutputStream
 @Composable
 fun ProfileScreen(
     onNavigateToLogin: () -> Unit,
+    isNetworkAvailable: Boolean,
     viewModel: ProfileViewModel = hiltViewModel()
 ) {
+    // If no network
+    if (!isNetworkAvailable) {
+        NoInternetScreen()
+        return
+    }
+
     val uiState by viewModel.uiState.collectAsState()
     val showLogoutDialog by viewModel.showLogoutDialog.collectAsState()
     val showEditDialog by viewModel.showEditDialog.collectAsState()

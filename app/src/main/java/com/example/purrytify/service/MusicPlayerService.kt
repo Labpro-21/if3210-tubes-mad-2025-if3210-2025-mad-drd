@@ -38,6 +38,9 @@ class MusicPlayerService : Service() {
     private val _currentSong = MutableStateFlow<Song?>(null)
     val currentSong: StateFlow<Song?> = _currentSong
     
+    // Add callback for song completion
+    var onSongCompletion: (() -> Unit)? = null
+    
     // Coroutine for position updates
     private val serviceScope = CoroutineScope(Dispatchers.Main)
     private var positionUpdateJob: Job? = null
@@ -91,6 +94,8 @@ class MusicPlayerService : Service() {
                 setOnCompletionListener {
                     _isPlaying.value = false
                     _progress.value = 1f  // Set to end
+                    onSongCompletion?.invoke()  // Trigger the completion callback
+                    Log.d(TAG, "Song completed, calling onSongCompletion")
                 }
                 
                 Log.d(TAG, "Started playing: ${song.title}")

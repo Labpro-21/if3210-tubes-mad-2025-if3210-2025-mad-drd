@@ -30,13 +30,21 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.purrytify.R
+import com.example.purrytify.ui.components.NoInternetScreen
 import com.example.purrytify.ui.theme.*
 
 @Composable
 fun LoginScreen(
     onLoginSuccess: () -> Unit,
+    isNetworkAvailable: Boolean,
     viewModel: LoginViewModel = hiltViewModel()
 ) {
+    // If no network
+    if (!isNetworkAvailable) {
+        NoInternetScreen()
+        return
+    }
+
     val loginUiState by viewModel.loginUiState.collectAsState()
     val email by viewModel.email.collectAsState()
     val password by viewModel.password.collectAsState()

@@ -8,11 +8,16 @@ import android.net.NetworkCapabilities
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.example.purrytify.util.Constants
 
-class NetworkConnectivityReceiver : BroadcastReceiver() {
+class NetworkConnectivityReceiver(
+    private val networkStateChanged: ((Boolean) -> Unit)? = null
+) : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action == ConnectivityManager.CONNECTIVITY_ACTION) {
             val isConnected = isNetworkAvailable(context)
+            
+            // Notify listener
+            networkStateChanged?.invoke(isConnected)
             
             // Send local broadcast with connectivity status
             val localIntent = Intent(Constants.ACTION_CONNECTIVITY_CHANGE).apply {

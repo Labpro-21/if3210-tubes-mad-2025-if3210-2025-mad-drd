@@ -82,6 +82,13 @@ class LibraryViewModel @Inject constructor(
             musicService = musicBinder.getService()
             serviceBound = true
 
+            // Setup auto-play next song feature
+            musicService?.onSongCompletion = {
+                viewModelScope.launch {
+                    playNextSong()
+                }
+            }
+
             // Observe service state
             viewModelScope.launch {
                 musicService?.isPlaying?.collect { playing ->

@@ -1,10 +1,12 @@
 package com.example.purrytify.util
 
 import android.content.Context
+import android.content.IntentFilter
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
+import com.example.purrytify.broadcast.NetworkConnectivityReceiver
 import com.example.purrytify.domain.util.Resource
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,6 +23,12 @@ class NetworkUtils @Inject constructor(
     private val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
     private val _isNetworkAvailable = MutableStateFlow(false)
     val isNetworkAvailable: Flow<Boolean> = _isNetworkAvailable.asStateFlow()
+    
+    // Broadcast receiver for network changes
+    private val networkReceiver = NetworkConnectivityReceiver {
+        // This will be called whenever network state changes
+        _isNetworkAvailable.value = it
+    }
     
     init {
         // Initialize with current network state
@@ -40,6 +48,10 @@ class NetworkUtils @Inject constructor(
                 updateConnectionStatus()
             }
         })
+        
+        // Register broadcast receiver for additional reliability
+        val intentFilter = IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION)
+        context.registerReceiver(networkReceiver, intentFilter)
     }
     
     private fun updateConnectionStatus() {
@@ -50,6 +62,10 @@ class NetworkUtils @Inject constructor(
     
     suspend fun <T> safeApiCall(apiCall: suspend () -> Response<T>): Resource<T> {
         return try {
+            if (!_isNetworkAvailable.value) {
+                return Resource.Error("No internet connection")
+            }
+            
             val response = apiCall()
             if (response.isSuccessful) {
                 response.body()?.let {

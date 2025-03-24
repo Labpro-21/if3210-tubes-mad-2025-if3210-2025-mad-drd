@@ -25,58 +25,66 @@ fun NavGraph(
     navController: NavHostController,
     modifier: Modifier = Modifier,
     startDestination: String = Screen.Login.route,
-    viewModel: LibraryViewModel? = null
+    viewModel: LibraryViewModel? = null,
+    isNetworkAvailable: Boolean = true
 ) {
     NavHost(
         navController = navController,
         startDestination = startDestination,
         modifier = modifier
     ) {
+        // Uses internet
         composable(Screen.Login.route) {
             LoginScreen(
                 onLoginSuccess = {
                     navController.navigate(Screen.Home.route) {
                         popUpTo(Screen.Login.route) { inclusive = true }
                     }
-                }
+                },
+                isNetworkAvailable = isNetworkAvailable
             )
         }
         
+        // Doesn't use internet (local db)
         composable(Screen.Home.route) {
             HomeScreen(
                 onNavigateToPlayer = { songId ->
                     navController.navigate("${Screen.Player.route}/$songId")
-                }
+                },
             )
         }
         
+        // Doesn't use internet (local db)
         composable(Screen.Library.route) {
             if (viewModel != null) {
                 LibraryScreen(
                     onNavigateToPlayer = { songId ->
                         navController.navigate("${Screen.Player.route}/$songId")
                     },
-                    viewModel = viewModel
+                    viewModel = viewModel,
                 )
             } else {
                 LibraryScreen(
                     onNavigateToPlayer = { songId ->
                         navController.navigate("${Screen.Player.route}/$songId")
-                    }
+                    },
                 )
             }
         }
         
+        // Uses internet
         composable(Screen.Profile.route) {
             ProfileScreen(
                 onNavigateToLogin = {
                     navController.navigate(Screen.Login.route) {
                         popUpTo(Screen.Home.route) { inclusive = true }
                     }
-                }
+                },
+                isNetworkAvailable = isNetworkAvailable
             )
         }
         
+        // Doesn't use internet (local db)
         composable("${Screen.Player.route}/{songId}") { backStackEntry ->
             val songId = backStackEntry.arguments?.getString("songId")
             if (viewModel != null) {
@@ -85,14 +93,14 @@ fun NavGraph(
                     onNavigateBack = {
                         navController.navigateUp()
                     },
-                    viewModel = viewModel
+                    viewModel = viewModel,
                 )
             } else {
                 PlayerScreen(
                     songId = songId,
                     onNavigateBack = {
                         navController.navigateUp()
-                    }
+                    },
                 )
             }
         }

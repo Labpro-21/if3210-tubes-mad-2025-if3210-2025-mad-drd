@@ -23,6 +23,13 @@ class AuthRepository @Inject constructor(
     fun login(email: String, password: String): Flow<Resource<Boolean>> = flow {
         emit(Resource.Loading)
 
+        // Check network availability
+        val isNetworkAvailable = networkUtils.isNetworkAvailable.first()
+        if (!isNetworkAvailable) {
+            emit(Resource.Error("No internet connection"))
+            return@flow
+        }
+
         val response = networkUtils.safeApiCall {
             api.login(LoginRequest(email, password))
         }
@@ -34,7 +41,7 @@ class AuthRepository @Inject constructor(
                 emit(Resource.Success(true))
             }
             is Resource.Error -> {
-                emit(Resource.Error(response.message))
+                emit(Resource.Error(response.message, response.code))
             }
             is Resource.Loading -> {
                 // Already emitted loading state
@@ -44,6 +51,11 @@ class AuthRepository @Inject constructor(
 
     // Verify if token is valid
     fun verifyToken(): Flow<Boolean> = flow {
+        if (!networkUtils.isNetworkAvailable.first()) {
+            emit(false)
+            return@flow
+        }
+
         val response = networkUtils.safeApiCall {
             api.verifyToken()
         }
@@ -54,6 +66,13 @@ class AuthRepository @Inject constructor(
     // Refresh token
     fun refreshToken(): Flow<Resource<Boolean>> = flow {
         emit(Resource.Loading)
+
+        // Check network availability
+        val isNetworkAvailable = networkUtils.isNetworkAvailable.first()
+        if (!isNetworkAvailable) {
+            emit(Resource.Error("No internet connection"))
+            return@flow
+        }
 
         val refreshToken = userPreferences.getRefreshToken().first()
 
@@ -73,7 +92,7 @@ class AuthRepository @Inject constructor(
                 emit(Resource.Success(true))
             }
             is Resource.Error -> {
-                emit(Resource.Error(response.message))
+                emit(Resource.Error(response.message, response.code))
             }
             is Resource.Loading -> {
                 // Already emitted loading state

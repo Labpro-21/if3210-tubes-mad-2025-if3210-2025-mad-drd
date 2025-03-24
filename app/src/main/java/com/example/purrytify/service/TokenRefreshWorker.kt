@@ -18,24 +18,37 @@ class TokenRefreshWorker @AssistedInject constructor(
 ) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result {
-        // Check if token is valid
-        val isTokenValid = authRepository.verifyToken().first()
-        
-        // If token is not valid, try to refresh it
-        if (!isTokenValid) {
-            val result = authRepository.refreshToken().first()
+        // Try to verify token first
+        try {
+            val isTokenValid = authRepository.verifyToken().first()
             
-            return when (result) {
-                is Resource.Success -> Result.success()
-                is Resource.Error -> {
-                    // If token refresh fails, user needs to log in again
-                    authRepository.clearTokens()
-                    Result.failure()
+            // If token is not valid or verification fails, refresh it
+            if (!isTokenValid) {
+                val result = authRepository.refreshToken().first()
+                
+                return when (result) {
+                    is Resource.Success -> {
+                        // Token refreshed successfully
+                        Result.success()
+                    }
+                    is Resource.Error -> {
+                        // Only clear tokens if token refresh explicitly fails 
+                        if (result.code == 401 || result.code == 403) {
+                            authRepository.clearTokens()
+                            Result.failure()
+                        } else {
+                            // For network errors, retry
+                            Result.retry()
+                        }
+                    }
+                    is Resource.Loading -> Result.retry()
                 }
-                is Resource.Loading -> Result.retry()
             }
+            
+            return Result.success()
+        } catch (e: Exception) {
+            // If any error occurs (like network error), retry
+            return Result.retry()
         }
-        
-        return Result.success()
     }
 }

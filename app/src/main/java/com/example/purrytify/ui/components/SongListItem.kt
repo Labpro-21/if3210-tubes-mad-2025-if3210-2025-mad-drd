@@ -65,7 +65,6 @@ fun SongListItem(
                 text = song.title,
                 style = Typography.bodyLarge,
                 color = if (isPlaying) PurrytifyGreen else PurrytifyWhite, // Changed active color to green
-                fontWeight = if (isPlaying) FontWeight.Bold else FontWeight.Normal,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )

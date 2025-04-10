@@ -16,6 +16,7 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.purrytify.R
 import com.example.purrytify.domain.model.Song
+import com.example.purrytify.ui.theme.PurrytifyGreen
 import com.example.purrytify.ui.theme.PurrytifyLightGray
 import com.example.purrytify.ui.theme.PurrytifyWhite
 import com.example.purrytify.ui.theme.Typography
@@ -26,6 +27,7 @@ import com.example.purrytify.ui.theme.Typography
 @Composable
 fun NewSongItem(
     song: Song,
+    isPlaying: Boolean = false,
     onClick: (Song) -> Unit
 ) {
     Column(
@@ -53,7 +55,7 @@ fun NewSongItem(
         Text(
             text = song.title,
             style = Typography.bodyMedium,
-            color = PurrytifyWhite,
+            color = if (isPlaying) PurrytifyGreen else PurrytifyWhite,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )

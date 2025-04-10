@@ -31,7 +31,6 @@ fun HomeScreen(
     viewModel: LibraryViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val currentPlayingSong by viewModel.currentPlayingSong.collectAsState()
 
     Box(
         modifier = Modifier
@@ -81,10 +80,11 @@ fun HomeScreen(
 fun HomeContent(
     newSongs: List<Song>,
     recentlyPlayedSongs: List<Song>,
-    currentPlayingSongId: Long? = null,
     onSongClick: (Song) -> Unit,
     viewModel: LibraryViewModel = hiltViewModel()
 ) {
+    val currentPlayingSong by viewModel.currentPlayingSong.collectAsState()
+
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -117,6 +117,7 @@ fun HomeContent(
                     items(newSongs) { song ->
                         NewSongItem(
                             song = song,
+                            isPlaying = currentPlayingSong?.id == song.id,
                             onClick = { viewModel.playSong(it) }
                         )
                     }
@@ -149,7 +150,7 @@ fun HomeContent(
             items(recentlyPlayedSongs) { song ->
                 SongListItem(
                     song = song,
-                    isPlaying = currentPlayingSongId == song.id,
+                    isPlaying = currentPlayingSong?.id == song.id,
                     onClick = { viewModel.playSong(it) }
                 )
             }

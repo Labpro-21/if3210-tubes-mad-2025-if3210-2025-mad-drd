@@ -19,6 +19,7 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.purrytify.R
 import com.example.purrytify.domain.model.Song
+import com.example.purrytify.ui.theme.PurrytifyGreen
 import com.example.purrytify.ui.theme.PurrytifyLightGray
 import com.example.purrytify.ui.theme.PurrytifyWhite
 import com.example.purrytify.ui.theme.Typography
@@ -33,7 +34,7 @@ fun SongListItem(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onClick(song) }
-            .padding(vertical = 8.dp, horizontal = 16.dp),
+            .padding(vertical = 8.dp, horizontal = 0.dp), // Removed horizontal padding
         verticalAlignment = Alignment.CenterVertically
     ) {
         // Album artwork
@@ -53,7 +54,7 @@ fun SongListItem(
                 error = painterResource(id = R.drawable.ic_launcher_foreground)
             )
         }
-        
+
         // Song info
         Column(
             modifier = Modifier
@@ -63,14 +64,14 @@ fun SongListItem(
             Text(
                 text = song.title,
                 style = Typography.bodyLarge,
-                color = if (isPlaying) PurrytifyWhite else PurrytifyWhite,
+                color = if (isPlaying) PurrytifyGreen else PurrytifyWhite, // Changed active color to green
                 fontWeight = if (isPlaying) FontWeight.Bold else FontWeight.Normal,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
-            
+
             Spacer(modifier = Modifier.height(4.dp))
-            
+
             Text(
                 text = song.artist,
                 style = Typography.bodyMedium,

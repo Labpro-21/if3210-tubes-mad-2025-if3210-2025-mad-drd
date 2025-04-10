@@ -326,6 +326,20 @@ class LibraryViewModel @Inject constructor(
         }
     }
 
+    fun getRecentlyPlayedSongs(): List<Song> {
+        // Get the songs from the current UI state
+        val allSongs = when (val state = this.uiState.value) {
+            is LibraryUiState.Success -> state.songs
+            else -> emptyList()
+        }
+
+        // Filter songs that have been played (non-null lastPlayedAt)
+        // and sort by lastPlayedAt (most recent first)
+        return allSongs
+            .filter { it.lastPlayedAt != null }
+            .sortedByDescending { it.lastPlayedAt }
+    }
+
     fun playSong(song: Song) {
         viewModelScope.launch {
             if (_currentPlayingSong.value?.id == song.id) {

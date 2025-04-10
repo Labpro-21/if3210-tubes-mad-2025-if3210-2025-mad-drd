@@ -117,7 +117,7 @@ fun HomeContent(
                     items(newSongs) { song ->
                         NewSongItem(
                             song = song,
-                            onClick = { onSongClick(song) }
+                            onClick = { viewModel.playSong(it) }
                         )
                     }
                 }

@@ -198,7 +198,10 @@ fun LibraryScreen(
                     val songs = (uiState as LibraryUiState.Success).songs
                     
                     LazyColumn(
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 16.dp)
+                            .weight(1f),
                     ) {
                         items(songs) { song ->
                             SongListItem(

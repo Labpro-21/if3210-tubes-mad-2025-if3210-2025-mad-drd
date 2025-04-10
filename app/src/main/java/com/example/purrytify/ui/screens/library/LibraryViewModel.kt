@@ -1,3 +1,5 @@
+// First, let's update the LibraryViewModel.kt to handle search functionality
+
 package com.example.purrytify.ui.screens.library
 
 import android.app.Application
@@ -28,42 +30,35 @@ class LibraryViewModel @Inject constructor(
     private val songRepository: SongRepository,
     application: Application
 ) : AndroidViewModel(application) {
-
     // UI States
     private val _uiState = MutableStateFlow<LibraryUiState>(LibraryUiState.Loading)
     val uiState: StateFlow<LibraryUiState> = _uiState
-
     private val _activeTab = MutableStateFlow(LibraryTab.ALL)
     val activeTab: StateFlow<LibraryTab> = _activeTab
-
     private val _showAddSongDialog = MutableStateFlow(false)
     val showAddSongDialog: StateFlow<Boolean> = _showAddSongDialog
-
     private val _showEditSongDialog = MutableStateFlow(false)
     val showEditSongDialog: StateFlow<Boolean> = _showEditSongDialog
-
     private val _showDeleteSongDialog = MutableStateFlow(false)
     val showDeleteSongDialog: StateFlow<Boolean> = _showDeleteSongDialog
-
     private val _isAddingLoading = MutableStateFlow(false)
     val isAddingLoading: StateFlow<Boolean> = _isAddingLoading
-
     private val _addSongError = MutableStateFlow<String?>(null)
     val addSongError: StateFlow<String?> = _addSongError
-
     private val _currentEditSong = MutableStateFlow<Song?>(null)
     val currentEditSong: StateFlow<Song?> = _currentEditSong
+
+    // Search functionality
+    private val _searchQuery = MutableStateFlow("")
+    val searchQuery: StateFlow<String> = _searchQuery
 
     // Currently playing song
     private val _currentPlayingSong = MutableStateFlow<Song?>(null)
     val currentPlayingSong: StateFlow<Song?> = _currentPlayingSong
-
     private val _isPlaying = MutableStateFlow(false)
     val isPlaying: StateFlow<Boolean> = _isPlaying
-
     private val _progress = MutableStateFlow(0f)
     val progress: StateFlow<Float> = _progress
-
     private val _currentPosition = MutableStateFlow(0L)
     val currentPosition: StateFlow<Long> = _currentPosition
 
@@ -154,26 +149,47 @@ class LibraryViewModel @Inject constructor(
             // Combine all songs and liked songs flows
             combine(
                 songRepository.getAllSongs(),
-                songRepository.getLikedSongs()
-            ) { allSongs, likedSongs ->
+                songRepository.getLikedSongs(),
+                _searchQuery
+            ) { allSongs, likedSongs, query ->
                 _allSongs.value = allSongs
                 _likedSongs.value = likedSongs
 
-                // Update UI state
-                val currentSongs = when (_activeTab.value) {
+                // Get current tab songs
+                val tabSongs = when (_activeTab.value) {
                     LibraryTab.ALL -> allSongs
                     LibraryTab.LIKED -> likedSongs
                 }
 
-                _uiState.value = if (currentSongs.isEmpty()) {
-                    LibraryUiState.Empty
+                // Apply search filter if query is not empty
+                val filteredSongs = if (query.isNotEmpty()) {
+                    tabSongs.filter { song ->
+                        song.title.contains(query, ignoreCase = true) ||
+                                song.artist.contains(query, ignoreCase = true)
+                    }
                 } else {
-                    LibraryUiState.Success(currentSongs)
+                    tabSongs
+                }
+
+                // Update UI state
+                _uiState.value = if (filteredSongs.isEmpty()) {
+                    if (query.isNotEmpty()) {
+                        LibraryUiState.Empty
+                    } else {
+                        LibraryUiState.Empty
+                    }
+                } else {
+                    LibraryUiState.Success(filteredSongs)
                 }
             }.catch { e ->
                 _uiState.value = LibraryUiState.Error(e.message ?: "Failed to load songs")
             }.collect()
         }
+    }
+
+    // Set search query
+    fun setSearchQuery(query: String) {
+        _searchQuery.value = query
     }
 
     fun switchTab(tab: LibraryTab) {
@@ -235,7 +251,6 @@ class LibraryViewModel @Inject constructor(
         viewModelScope.launch {
             _isAddingLoading.value = true
             _addSongError.value = null
-
             try {
                 val songId = songRepository.addSong(audioUri, title, artist, artworkUri)
                 if (songId == null) {
@@ -256,7 +271,6 @@ class LibraryViewModel @Inject constructor(
         viewModelScope.launch {
             _isAddingLoading.value = true
             _addSongError.value = null
-
             try {
                 // First create an updated song
                 val updatedSong = song.copy(
@@ -417,6 +431,7 @@ class LibraryViewModel @Inject constructor(
         }
     }
 }
+
 
 enum class LibraryTab {
     ALL, LIKED

@@ -10,12 +10,15 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.LibraryMusic
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -38,11 +41,14 @@ fun LibraryScreen(
     val showAddSongDialog by viewModel.showAddSongDialog.collectAsState()
     val isAddingLoading by viewModel.isAddingLoading.collectAsState()
     val addSongError by viewModel.addSongError.collectAsState()
-    
+
     val currentPlayingSong by viewModel.currentPlayingSong.collectAsState()
     val isPlaying by viewModel.isPlaying.collectAsState()
     val progress by viewModel.progress.collectAsState()
-    
+
+    // Search state
+    val searchQuery by viewModel.searchQuery.collectAsState()
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -66,7 +72,7 @@ fun LibraryScreen(
                     color = PurrytifyWhite,
                     fontWeight = FontWeight.Bold
                 )
-                
+
                 // Add song button
                 IconButton(
                     onClick = { viewModel.showAddSongDialog() },
@@ -80,16 +86,24 @@ fun LibraryScreen(
                     )
                 }
             }
-
             Spacer(modifier = Modifier.height(4.dp))
-            
+
+            // Search Bar - New Component
+            SearchBar(
+                searchQuery = searchQuery,
+                onSearchQueryChange = { viewModel.setSearchQuery(it) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+                    .padding(bottom = 8.dp)
+            )
+
             // Tab filters
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 16.dp)
-                    .padding(horizontal = 16.dp)
-                ,
+                    .padding(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.Start
             ) {
                 // All tab
@@ -119,9 +133,9 @@ fun LibraryScreen(
                         selectedBorderWidth = 0.dp
                     )
                 )
-                
+
                 Spacer(modifier = Modifier.width(8.dp))
-                
+
                 // Liked tab
                 FilterChip(
                     selected = activeTab == LibraryTab.LIKED,
@@ -156,7 +170,7 @@ fun LibraryScreen(
                 is LibraryUiState.Loading -> {
                     LoadingView()
                 }
-                
+
                 is LibraryUiState.Empty -> {
                     Box(
                         modifier = Modifier.fillMaxSize(),
@@ -171,21 +185,26 @@ fun LibraryScreen(
                                 tint = PurrytifyLightGray,
                                 modifier = Modifier.size(64.dp)
                             )
-                            
+
                             Spacer(modifier = Modifier.height(16.dp))
-                            
+
                             Text(
-                                text = "No music available",
+                                text = if (searchQuery.isNotEmpty())
+                                    "No matching songs found"
+                                else
+                                    "No music available",
                                 style = Typography.titleMedium,
                                 color = PurrytifyLightGray
                             )
-                            
+
                             Spacer(modifier = Modifier.height(8.dp))
-                            
+
                             Text(
-                                text = if (activeTab == LibraryTab.ALL) 
-                                    "Tap the + button to add songs" 
-                                else 
+                                text = if (searchQuery.isNotEmpty())
+                                    "Try a different search term"
+                                else if (activeTab == LibraryTab.ALL)
+                                    "Tap the + button to add songs"
+                                else
                                     "Like some songs to see them here",
                                 style = Typography.bodyMedium,
                                 color = PurrytifyLightGray
@@ -193,10 +212,10 @@ fun LibraryScreen(
                         }
                     }
                 }
-                
+
                 is LibraryUiState.Success -> {
                     val songs = (uiState as LibraryUiState.Success).songs
-                    
+
                     LazyColumn(
                         modifier = Modifier
                             .fillMaxSize()
@@ -212,7 +231,7 @@ fun LibraryScreen(
                         }
                     }
                 }
-                
+
                 is LibraryUiState.Error -> {
                     Box(
                         modifier = Modifier.fillMaxSize(),
@@ -227,7 +246,7 @@ fun LibraryScreen(
                 }
             }
         }
-        
+
         // Add song modal
         AddSongModalBottomSheet(
             isVisible = showAddSongDialog,
@@ -239,4 +258,56 @@ fun LibraryScreen(
             }
         )
     }
+}
+
+// New component for the search bar
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SearchBar(
+    searchQuery: String,
+    onSearchQueryChange: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    TextField(
+        value = searchQuery,
+        onValueChange = onSearchQueryChange,
+        placeholder = {
+            Text(
+                text = "Search songs or artists",
+                color = PurrytifyLightGray,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        },
+        leadingIcon = {
+            Icon(
+                imageVector = Icons.Default.Search,
+                contentDescription = "Search",
+                tint = PurrytifyLightGray
+            )
+        },
+        trailingIcon = {
+            if (searchQuery.isNotEmpty()) {
+                IconButton(onClick = { onSearchQueryChange("") }) {
+                    Icon(
+                        imageVector = Icons.Default.Clear,
+                        contentDescription = "Clear",
+                        tint = PurrytifyLightGray
+                    )
+                }
+            }
+        },
+        modifier = modifier
+            .fillMaxWidth()
+            .heightIn(min = 56.dp),
+        colors = TextFieldDefaults.textFieldColors(
+            containerColor = PurrytifyLighterBlack,
+            cursorColor = PurrytifyGreen,
+            focusedIndicatorColor = Color.Transparent,
+            unfocusedIndicatorColor = Color.Transparent,
+            disabledIndicatorColor = Color.Transparent
+        ),
+        shape = RoundedCornerShape(12.dp),
+        singleLine = true
+    )
 }

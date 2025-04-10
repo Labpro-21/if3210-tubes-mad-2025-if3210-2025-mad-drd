@@ -25,15 +25,17 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.purrytify.ui.components.BottomNavigation
+import com.example.purrytify.ui.components.LoadingView
 import com.example.purrytify.ui.components.MiniPlayerBar
 import com.example.purrytify.ui.components.NetworkConnectivityDialog
 import com.example.purrytify.ui.navigation.NavGraph
 import com.example.purrytify.ui.navigation.Screen
 import com.example.purrytify.ui.screens.library.LibraryViewModel
+import com.example.purrytify.ui.screens.splash.AuthState
+import com.example.purrytify.ui.screens.splash.SplashViewModel
 import com.example.purrytify.ui.theme.PurrytifyTheme
 import com.example.purrytify.util.NetworkUtils
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.flow.collectLatest
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -44,17 +46,35 @@ class MainActivity : ComponentActivity() {
     
     override fun onCreate(savedInstanceState: Bundle?) {
         val splashScreen = installSplashScreen()
-        var isAppReady = false
-
-        // Keep splash screen until content is ready
-        splashScreen.setKeepOnScreenCondition { !isAppReady }
-
+        
         super.onCreate(savedInstanceState)
-
+        
         setContent {
             PurrytifyTheme {
-                isAppReady = true
-                PurrytifyApp(networkUtils)
+                val splashViewModel: SplashViewModel = hiltViewModel()
+                val authState by splashViewModel.authState.collectAsState()
+                
+                // Keep splash screen visible until we've checked auth status
+                splashScreen.setKeepOnScreenCondition { 
+                    authState == AuthState.Loading 
+                }
+                
+                // Only render main content once we know the auth state
+                when (authState) {
+                    AuthState.Loading -> {
+                        // Show a loading screen if splash times out but auth check is still running
+                        // This can be a blank screen or a simple loading indicator
+                        LoadingView()
+                    }
+                    AuthState.Authenticated -> {
+                        // If authenticated, start directly at Home
+                        PurrytifyApp(networkUtils, Screen.Home.route)
+                    }
+                    AuthState.Unauthenticated -> {
+                        // If not authenticated, start at Login
+                        PurrytifyApp(networkUtils, Screen.Login.route)
+                    }
+                }
             }
         }
     }
@@ -62,7 +82,7 @@ class MainActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PurrytifyApp(networkUtils: NetworkUtils) {
+fun PurrytifyApp(networkUtils: NetworkUtils, startDestination: String = Screen.Login.route) {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
@@ -113,7 +133,8 @@ fun PurrytifyApp(networkUtils: NetworkUtils) {
                 navController = navController,
                 modifier = Modifier.fillMaxSize(),
                 viewModel = viewModel,
-                isNetworkAvailable = isNetworkAvailable
+                isNetworkAvailable = isNetworkAvailable,
+                startDestination = startDestination  // Pass the dynamically determined start destination
             )
         }
 

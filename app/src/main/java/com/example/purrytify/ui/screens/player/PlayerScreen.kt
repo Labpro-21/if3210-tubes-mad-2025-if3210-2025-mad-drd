@@ -260,6 +260,19 @@ fun PlayerScreen(
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                // Shuffle button (NEW)
+                IconButton(
+                    onClick = { viewModel.toggleShuffle() }, // You'll need to add this method to your ViewModel
+                    modifier = Modifier.size(48.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Shuffle,
+                        contentDescription = "Shuffle",
+                        tint = if (viewModel.isShuffleEnabled.collectAsState().value) PurrytifyGreen else PurrytifyWhite,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+
                 // Previous button
                 IconButton(
                     onClick = { viewModel.playPreviousSong() },
@@ -302,21 +315,6 @@ fun PlayerScreen(
                         modifier = Modifier.size(32.dp)
                     )
                 }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Like button
-            IconButton(
-                onClick = { viewModel.toggleLikeSong(song) },
-                modifier = Modifier.size(48.dp)
-            ) {
-                Icon(
-                    imageVector = if (song.isLiked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                    contentDescription = if (song.isLiked) "Unlike" else "Like",
-                    tint = if (song.isLiked) PurrytifyGreen else PurrytifyWhite,
-                    modifier = Modifier.size(24.dp)
-                )
             }
         }
 

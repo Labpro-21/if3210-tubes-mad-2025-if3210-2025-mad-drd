@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.asStateFlow
 import javax.inject.Inject
 
 @HiltViewModel
@@ -118,6 +119,10 @@ class LibraryViewModel @Inject constructor(
             Log.d("LibraryViewModel", "Service disconnected")
         }
     }
+
+    // Shuffle songs
+    private val _isShuffleEnabled = MutableStateFlow(false)
+    val isShuffleEnabled: StateFlow<Boolean> = _isShuffleEnabled.asStateFlow()
 
     init {
         loadSongs()
@@ -388,7 +393,12 @@ class LibraryViewModel @Inject constructor(
         musicService?.seekTo(newPosition)
     }
 
-    // Get next/previous song functionality
+    // Add this function to toggle shuffle state
+    fun toggleShuffle() {
+        _isShuffleEnabled.value = !_isShuffleEnabled.value
+    }
+
+    // Update your playNextSong function to support shuffle
     fun playNextSong() {
         viewModelScope.launch {
             val currentSongId = _currentPlayingSong.value?.id ?: return@launch
@@ -397,19 +407,26 @@ class LibraryViewModel @Inject constructor(
                 LibraryTab.LIKED -> _likedSongs.value
             }
 
-            // Find the current song index
-            val currentIndex = currentList.indexOfFirst { it.id == currentSongId }
-            if (currentIndex == -1) return@launch
+            if (currentList.isEmpty()) return@launch
 
-            // Get the next song (or wrap around to the first if at the end)
-            val nextIndex = (currentIndex + 1) % currentList.size
-            val nextSong = currentList[nextIndex]
+            // If shuffle is enabled, pick a random song
+            if (_isShuffleEnabled.value) {
+                val randomIndex = (0 until currentList.size).random()
+                val nextSong = currentList[randomIndex]
+                playSong(nextSong)
+            } else {
+                // Original sequential behavior
+                val currentIndex = currentList.indexOfFirst { it.id == currentSongId }
+                if (currentIndex == -1) return@launch
 
-            // Play the next song
-            playSong(nextSong)
+                val nextIndex = (currentIndex + 1) % currentList.size
+                val nextSong = currentList[nextIndex]
+                playSong(nextSong)
+            }
         }
     }
 
+    // Similarly update playPreviousSong if you want shuffle to affect it too
     fun playPreviousSong() {
         viewModelScope.launch {
             val currentSongId = _currentPlayingSong.value?.id ?: return@launch
@@ -418,16 +435,22 @@ class LibraryViewModel @Inject constructor(
                 LibraryTab.LIKED -> _likedSongs.value
             }
 
-            // Find the current song index
-            val currentIndex = currentList.indexOfFirst { it.id == currentSongId }
-            if (currentIndex == -1) return@launch
+            if (currentList.isEmpty()) return@launch
 
-            // Get the previous song (or wrap around to the last if at the beginning)
-            val previousIndex = if (currentIndex > 0) currentIndex - 1 else currentList.size - 1
-            val previousSong = currentList[previousIndex]
+            // If shuffle is enabled, pick a random song
+            if (_isShuffleEnabled.value) {
+                val randomIndex = (0 until currentList.size).random()
+                val previousSong = currentList[randomIndex]
+                playSong(previousSong)
+            } else {
+                // Original sequential behavior
+                val currentIndex = currentList.indexOfFirst { it.id == currentSongId }
+                if (currentIndex == -1) return@launch
 
-            // Play the previous song
-            playSong(previousSong)
+                val previousIndex = if (currentIndex > 0) currentIndex - 1 else currentList.size - 1
+                val previousSong = currentList[previousIndex]
+                playSong(previousSong)
+            }
         }
     }
 }

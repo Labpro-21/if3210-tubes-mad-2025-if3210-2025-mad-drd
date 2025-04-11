@@ -27,6 +27,7 @@ import com.example.purrytify.ui.components.DeleteSongConfirmationSheet
 import com.example.purrytify.ui.components.EditSongModalBottomSheet
 import com.example.purrytify.ui.screens.library.LibraryViewModel
 import com.example.purrytify.ui.theme.*
+import com.example.purrytify.ui.screens.library.RepeatMode
 
 @Composable
 fun PlayerScreen(
@@ -313,6 +314,27 @@ fun PlayerScreen(
                         contentDescription = "Next",
                         tint = PurrytifyWhite,
                         modifier = Modifier.size(32.dp)
+                    )
+                }
+
+                // Repeat button
+                IconButton(
+                    onClick = { viewModel.toggleRepeatMode() },
+                    modifier = Modifier.size(48.dp)
+                ) {
+                    val repeatMode by viewModel.repeatMode.collectAsState()
+                    Icon(
+                        imageVector = when (repeatMode) {
+                            RepeatMode.OFF -> Icons.Default.RepeatOne // Using RepeatOne icon but will tint differently
+                            RepeatMode.ALL -> Icons.Default.Repeat
+                            RepeatMode.ONE -> Icons.Default.RepeatOne
+                        },
+                        contentDescription = "Repeat",
+                        tint = when (repeatMode) {
+                            RepeatMode.OFF -> PurrytifyWhite
+                            RepeatMode.ALL, RepeatMode.ONE -> PurrytifyGreen
+                        },
+                        modifier = Modifier.size(24.dp)
                     )
                 }
             }

@@ -124,6 +124,10 @@ class LibraryViewModel @Inject constructor(
     private val _isShuffleEnabled = MutableStateFlow(false)
     val isShuffleEnabled: StateFlow<Boolean> = _isShuffleEnabled.asStateFlow()
 
+    // Repeate song
+    private val _repeatMode = MutableStateFlow(RepeatMode.OFF)
+    val repeatMode: StateFlow<RepeatMode> = _repeatMode.asStateFlow()
+
     init {
         loadSongs()
         bindMusicService()
@@ -401,7 +405,14 @@ class LibraryViewModel @Inject constructor(
     // Update your playNextSong function to support shuffle
     fun playNextSong() {
         viewModelScope.launch {
-            val currentSongId = _currentPlayingSong.value?.id ?: return@launch
+            val currentSong = _currentPlayingSong.value ?: return@launch
+
+            // If repeat one is enabled, replay the current song
+            if (_repeatMode.value == RepeatMode.ONE) {
+                playSong(currentSong)
+                return@launch
+            }
+
             val currentList = when (_activeTab.value) {
                 LibraryTab.ALL -> _allSongs.value
                 LibraryTab.LIKED -> _likedSongs.value
@@ -416,7 +427,7 @@ class LibraryViewModel @Inject constructor(
                 playSong(nextSong)
             } else {
                 // Original sequential behavior
-                val currentIndex = currentList.indexOfFirst { it.id == currentSongId }
+                val currentIndex = currentList.indexOfFirst { it.id == currentSong.id }
                 if (currentIndex == -1) return@launch
 
                 val nextIndex = (currentIndex + 1) % currentList.size
@@ -453,6 +464,14 @@ class LibraryViewModel @Inject constructor(
             }
         }
     }
+
+    fun toggleRepeatMode() {
+        _repeatMode.value = when (_repeatMode.value) {
+            RepeatMode.OFF -> RepeatMode.ALL
+            RepeatMode.ALL -> RepeatMode.ONE
+            RepeatMode.ONE -> RepeatMode.OFF
+        }
+    }
 }
 
 
@@ -465,4 +484,10 @@ sealed class LibraryUiState {
     object Empty : LibraryUiState()
     data class Success(val songs: List<Song>) : LibraryUiState()
     data class Error(val message: String) : LibraryUiState()
+}
+
+enum class RepeatMode {
+    OFF,        // No repeat
+    ALL,        // Repeat the playlist
+    ONE         // Repeat the current song
 }

@@ -1,16 +1,22 @@
 package com.example.purrytify.ui.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import com.example.purrytify.domain.auth.AuthStateManager
 import com.example.purrytify.ui.screens.auth.LoginScreen
 import com.example.purrytify.ui.screens.home.HomeScreen
 import com.example.purrytify.ui.screens.library.LibraryScreen
 import com.example.purrytify.ui.screens.library.LibraryViewModel
 import com.example.purrytify.ui.screens.player.PlayerScreen
 import com.example.purrytify.ui.screens.profile.ProfileScreen
+import com.example.purrytify.service.TokenRefreshScheduler
 
 sealed class Screen(val route: String) {
     object Login : Screen("login")
@@ -28,6 +34,21 @@ fun NavGraph(
     viewModel: LibraryViewModel? = null,
     isNetworkAvailable: Boolean = true
 ) {
+    val context = LocalContext.current
+
+    val shouldLogout by AuthStateManager.shouldLogout.collectAsState()
+
+    LaunchedEffect(shouldLogout) {
+        if (shouldLogout) {
+            TokenRefreshScheduler.cancel(context)
+            navController.navigate(Screen.Login.route) {
+                popUpTo(0) { inclusive = true }
+            }
+
+            AuthStateManager.clearLogout()
+        }
+    }
+
     NavHost(
         navController = navController,
         startDestination = startDestination,
@@ -37,6 +58,7 @@ fun NavGraph(
         composable(Screen.Login.route) {
             LoginScreen(
                 onLoginSuccess = {
+                    TokenRefreshScheduler.schedule(context)
                     navController.navigate(Screen.Home.route) {
                         popUpTo(Screen.Login.route) { inclusive = true }
                     }
@@ -44,7 +66,7 @@ fun NavGraph(
                 isNetworkAvailable = isNetworkAvailable
             )
         }
-        
+
         // Doesn't use internet (local db)
         composable(Screen.Home.route) {
             HomeScreen(
@@ -53,7 +75,7 @@ fun NavGraph(
                 },
             )
         }
-        
+
         // Doesn't use internet (local db)
         composable(Screen.Library.route) {
             if (viewModel != null) {
@@ -71,11 +93,12 @@ fun NavGraph(
                 )
             }
         }
-        
+
         // Uses internet
         composable(Screen.Profile.route) {
             ProfileScreen(
                 onNavigateToLogin = {
+                    TokenRefreshScheduler.cancel(context)
                     navController.navigate(Screen.Login.route) {
                         popUpTo(Screen.Home.route) { inclusive = true }
                     }
@@ -83,7 +106,7 @@ fun NavGraph(
                 isNetworkAvailable = isNetworkAvailable
             )
         }
-        
+
         // Doesn't use internet (local db)
         composable("${Screen.Player.route}/{songId}") { backStackEntry ->
             val songId = backStackEntry.arguments?.getString("songId")

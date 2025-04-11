@@ -1,14 +1,19 @@
 package com.example.purrytify.service
 
 import android.content.Context
+import android.util.Log
 import androidx.hilt.work.HiltWorker
-import androidx.work.CoroutineWorker
-import androidx.work.WorkerParameters
+import androidx.work.*
 import com.example.purrytify.data.repository.AuthRepository
+import com.example.purrytify.domain.auth.AuthStateManager
 import com.example.purrytify.domain.util.Resource
+import com.example.purrytify.util.Constants.TOKEN_REFRESH_INTERVAL_MINUTES
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.dropWhile
 import kotlinx.coroutines.flow.first
+import kotlin.coroutines.cancellation.CancellationException
 
 @HiltWorker
 class TokenRefreshWorker @AssistedInject constructor(
@@ -17,38 +22,54 @@ class TokenRefreshWorker @AssistedInject constructor(
     private val authRepository: AuthRepository
 ) : CoroutineWorker(context, params) {
 
+    init {
+        Log.d("TokenRefreshWorker", "Worker started")
+    }
+
     override suspend fun doWork(): Result {
-        // Try to verify token first
         try {
+            delay((TOKEN_REFRESH_INTERVAL_MINUTES) * 60 * 1000L) // 4 minutes
+            Log.d("TokenRefreshWorker", "Woke up from delay")
+
             val isTokenValid = authRepository.verifyToken().first()
-            
-            // If token is not valid or verification fails, refresh it
+            Log.d("TokenRefreshWorker", "Token valid: $isTokenValid")
+
             if (!isTokenValid) {
-                val result = authRepository.refreshToken().first()
-                
-                return when (result) {
+                val result = authRepository.refreshToken()
+                    .dropWhile { it is Resource.Loading }
+                    .first()
+
+                when (result) {
                     is Resource.Success -> {
-                        // Token refreshed successfully
-                        Result.success()
+                        Log.d("TokenRefreshWorker", "Token Refreshed")
                     }
                     is Resource.Error -> {
-                        // Only clear tokens if token refresh explicitly fails 
                         if (result.code == 401 || result.code == 403) {
+                            Log.d("TokenRefreshWorker", "Token Refresh Failed")
                             authRepository.clearTokens()
-                            Result.failure()
-                        } else {
-                            // For network errors, retry
-                            Result.retry()
+                            AuthStateManager.triggerLogout()
+                            return Result.failure()
                         }
+                        Log.d("TokenRefreshWorker", "Token Refresh Failed - Retrying")
+                        return Result.retry()
                     }
-                    is Resource.Loading -> Result.retry()
+                    else -> {
+                        Log.d("TokenRefreshWorker", "Unexpected state - Retrying")
+                        return Result.retry()
+                    }
                 }
             }
-            
+
+            TokenRefreshScheduler.schedule(applicationContext)
             return Result.success()
         } catch (e: Exception) {
-            // If any error occurs (like network error), retry
+
+            if (e is CancellationException) throw e
+
+            Log.e("TokenRefreshWorker", "Error in doWork()", e)
+            TokenRefreshScheduler.schedule(applicationContext)
             return Result.retry()
         }
     }
+
 }

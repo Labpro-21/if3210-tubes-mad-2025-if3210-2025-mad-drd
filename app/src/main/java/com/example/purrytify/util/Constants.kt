@@ -18,7 +18,6 @@ object Constants {
     const val KEY_REFRESH_TOKEN = "refresh_token"
     
     // Workers
-    const val TOKEN_REFRESH_WORKER = "token_refresh_worker"
     const val TOKEN_REFRESH_INTERVAL_MINUTES = 4L // Before the 5-min expiration
     
     // Database

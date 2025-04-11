@@ -7,6 +7,7 @@ import com.example.purrytify.data.repository.ProfileRepository
 import com.example.purrytify.data.repository.SongRepository
 import com.example.purrytify.domain.model.Profile
 import com.example.purrytify.domain.util.Resource
+import com.example.purrytify.domain.auth.AuthStateManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -55,7 +56,7 @@ class ProfileViewModel @Inject constructor(
             profileRepository.getProfile().collect { result ->
                 when (result) {
                     is Resource.Success -> _uiState.value = ProfileUiState.Success(result.data)
-                    is Resource.Error -> _uiState.value = ProfileUiState.Error(result.message)
+                    is Resource.Error -> AuthStateManager.triggerLogout()
                     is Resource.Loading -> _uiState.value = ProfileUiState.Loading
                 }
             }

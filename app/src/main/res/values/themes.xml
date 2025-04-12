@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.Purrytify" parent="android:Theme.Material.NoActionBar">
-        <item name="android:windowBackground">@color/black</item>
+    <style name="Theme.Purrytify" parent="Theme.MaterialComponents.Light.NoActionBar">
+        <item name="colorPrimary">@color/purrytify_green</item>
+        <item name="colorPrimaryDark">@color/purrytify_black</item>
+        <item name="colorAccent">@color/purrytify_light_gray</item>
     </style>
     <style name="Theme.Purrytify.SplashScreen" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">@color/black</item>

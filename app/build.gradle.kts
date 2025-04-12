@@ -75,6 +75,10 @@ dependencies {
     
     // Dependency Injection - Hilt
     implementation("com.google.dagger:hilt-android:2.44")
+    implementation("androidx.recyclerview:recyclerview:1.3.2")
+    implementation("androidx.constraintlayout:constraintlayout:2.1.4")
+    implementation(libs.androidx.cardview)
+    implementation("com.google.android.material:material:1.8.0")
     kapt("com.google.dagger:hilt-android-compiler:2.44")
     implementation("androidx.hilt:hilt-navigation-compose:1.0.0")
     implementation("androidx.hilt:hilt-work:1.0.0")

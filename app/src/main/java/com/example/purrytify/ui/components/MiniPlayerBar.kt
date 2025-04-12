@@ -15,6 +15,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -29,6 +31,7 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.purrytify.R
 import com.example.purrytify.domain.model.Song
+import com.example.purrytify.ui.screens.library.LibraryViewModel
 import com.example.purrytify.ui.theme.PurrytifyGreen
 import com.example.purrytify.ui.theme.PurrytifyLighterBlack
 import com.example.purrytify.ui.theme.PurrytifyWhite
@@ -37,12 +40,12 @@ import com.example.purrytify.ui.theme.Typography
 @Composable
 fun MiniPlayerBar(
     song: Song,
-    isPlaying: Boolean,
-    progress: Float,
-    onPlayPauseClick: () -> Unit,
-    onLikeClick: () -> Unit,
+    viewModel: LibraryViewModel, // Receive the ViewModel
     onBarClick: () -> Unit
 ) {
+    val isPlaying by viewModel.isPlaying.collectAsState()
+    val progress by viewModel.progress.collectAsState()
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -73,7 +76,7 @@ fun MiniPlayerBar(
                     error = painterResource(id = R.drawable.ic_launcher_foreground)
                 )
             }
-            
+
             // Song info
             Column(
                 modifier = Modifier
@@ -88,7 +91,7 @@ fun MiniPlayerBar(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-                
+
                 Text(
                     text = song.artist,
                     style = Typography.bodySmall,
@@ -97,10 +100,10 @@ fun MiniPlayerBar(
                     overflow = TextOverflow.Ellipsis
                 )
             }
-            
+
             // Like button
             IconButton(
-                onClick = onLikeClick,
+                onClick = { viewModel.toggleLikeSong(song) },
                 modifier = Modifier.size(40.dp)
             ) {
                 Icon(
@@ -110,10 +113,10 @@ fun MiniPlayerBar(
                     modifier = Modifier.size(24.dp)
                 )
             }
-            
+
             // Play/Pause button
             IconButton(
-                onClick = onPlayPauseClick,
+                onClick = { viewModel.togglePlayPause() },
                 modifier = Modifier.size(40.dp)
             ) {
                 Icon(

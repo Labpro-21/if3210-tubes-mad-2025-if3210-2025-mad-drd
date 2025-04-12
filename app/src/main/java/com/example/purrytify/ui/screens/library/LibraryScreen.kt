@@ -1,10 +1,13 @@
+// Updated LibraryScreen.kt
 package com.example.purrytify.ui.screens.library
 
 import android.net.Uri
+import android.util.Log
+import android.view.ContextThemeWrapper
+import android.view.LayoutInflater
+import android.view.ViewGroup
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -17,18 +20,20 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.example.purrytify.domain.model.Song
 import com.example.purrytify.ui.components.AddSongModalBottomSheet
 import com.example.purrytify.ui.components.LoadingView
-import com.example.purrytify.ui.components.MiniPlayerBar
-import com.example.purrytify.ui.components.SongListItem
 import com.example.purrytify.ui.theme.*
+import com.example.purrytify.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -48,6 +53,9 @@ fun LibraryScreen(
 
     // Search state
     val searchQuery by viewModel.searchQuery.collectAsState()
+
+    // Context for RecyclerView
+    val context = LocalContext.current
 
     Box(
         modifier = Modifier
@@ -216,20 +224,32 @@ fun LibraryScreen(
                 is LibraryUiState.Success -> {
                     val songs = (uiState as LibraryUiState.Success).songs
 
-                    LazyColumn(
+                    AndroidView(
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(horizontal = 16.dp)
-                            .weight(1f),
-                    ) {
-                        items(songs) { song ->
-                            SongListItem(
-                                song = song,
-                                isPlaying = currentPlayingSong?.id == song.id,
-                                onClick = { viewModel.playSong(it) }
-                            )
+                            .weight(1f)
+                            .padding(horizontal = 16.dp),
+                        factory = { context ->
+                            try {
+                                val themedContext = ContextThemeWrapper(context, R.style.Theme_Purrytify)
+                                RecyclerView(themedContext).apply {
+                                    layoutManager = LinearLayoutManager(themedContext)
+                                    adapter = SongsAdapter(songs, currentPlayingSong) { song ->
+                                        viewModel.playSong(song)
+                                    }
+                                }
+                            } catch (e: Exception) {
+                                Log.e("AndroidViewError", "Error inflating RecyclerView", e)
+                                throw e
+                            }
+                        },
+                        update = { recyclerView ->
+                            (recyclerView.adapter as? SongsAdapter)?.apply {
+                                updateSongs(songs)
+                                updatePlayingSong(currentPlayingSong)
+                            }
                         }
-                    }
+                    )
                 }
 
                 is LibraryUiState.Error -> {
@@ -260,7 +280,7 @@ fun LibraryScreen(
     }
 }
 
-// New component for the search bar
+// Search bar component (unchanged)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SearchBar(

@@ -86,25 +86,23 @@ fun PurrytifyApp(networkUtils: NetworkUtils, startDestination: String = Screen.L
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
-    
+
     val viewModel: LibraryViewModel = hiltViewModel()
     val currentPlayingSong by viewModel.currentPlayingSong.collectAsState()
-    val isPlaying by viewModel.isPlaying.collectAsState()
-    val progress by viewModel.progress.collectAsState()
-    
+
     // Network connectivity state
     val isNetworkAvailable by networkUtils.isNetworkAvailable.collectAsState(initial = true)
     var showNetworkDialog by remember { mutableStateOf(false) }
-    
+
     // If we need to show the bottom nav
     val showBottomNav = shouldShowBottomNav(currentRoute)
-    
+
     // If on the player screen
     val isPlayerScreen = currentRoute?.startsWith(Screen.Player.route) == true
-    
+
     // Show mini player only if a song is playing and we're not on the full player screen
     val showMiniPlayer = currentPlayingSong != null && !isPlayerScreen
-    
+
     // Monitor network state changes
     LaunchedEffect(isNetworkAvailable) {
         if (!isNetworkAvailable) {
@@ -150,10 +148,7 @@ fun PurrytifyApp(networkUtils: NetworkUtils, startDestination: String = Screen.L
                 currentPlayingSong?.let { song ->
                     MiniPlayerBar(
                         song = song,
-                        isPlaying = isPlaying,
-                        progress = progress,
-                        onPlayPauseClick = { viewModel.togglePlayPause() },
-                        onLikeClick = { viewModel.toggleLikeSong(song) },
+                        viewModel = viewModel, // Pass the ViewModel
                         onBarClick = {
                             navController.navigate("${Screen.Player.route}/${song.id}")
                         }
@@ -162,7 +157,7 @@ fun PurrytifyApp(networkUtils: NetworkUtils, startDestination: String = Screen.L
             }
         }
 
-        // Bottom navigation - with highest zIndex so it appears above everything
+        // Bottom navigation
         if (showBottomNav) {
             Box(
                 modifier = Modifier
@@ -173,7 +168,7 @@ fun PurrytifyApp(networkUtils: NetworkUtils, startDestination: String = Screen.L
                 BottomNavigation(navController = navController)
             }
         }
-        
+
         // Network connectivity dialog
         NetworkConnectivityDialog(
             isVisible = showNetworkDialog,

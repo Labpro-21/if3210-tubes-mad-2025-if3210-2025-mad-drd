@@ -101,7 +101,8 @@ fun PurrytifyApp(networkUtils: NetworkUtils, startDestination: String = Screen.L
     val isPlayerScreen = currentRoute?.startsWith(Screen.Player.route) == true
 
     // Show mini player only if a song is playing and we're not on the full player screen
-    val showMiniPlayer = currentPlayingSong != null && !isPlayerScreen
+    val isLoginScreen = currentRoute == Screen.Login.route
+    val showMiniPlayer = currentPlayingSong != null && !isPlayerScreen && !isLoginScreen
 
     // Monitor network state changes
     LaunchedEffect(isNetworkAvailable) {

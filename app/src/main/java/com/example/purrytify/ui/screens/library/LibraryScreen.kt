@@ -301,6 +301,8 @@ fun SearchBar(
             .fillMaxWidth()
             .heightIn(min = 56.dp),
         colors = TextFieldDefaults.textFieldColors(
+            focusedTextColor = PurrytifyWhite,
+            unfocusedTextColor = PurrytifyWhite,
             containerColor = PurrytifyLighterBlack,
             cursorColor = PurrytifyGreen,
             focusedIndicatorColor = Color.Transparent,

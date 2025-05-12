@@ -1,0 +1,129 @@
+package com.example.purrytify.ui.screens.auth
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.example.purrytify.data.repository.AuthRepository
+import com.example.purrytify.domain.util.Result
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+import timber.log.Timber
+import javax.inject.Inject
+
+/**
+ * ViewModel for the login screen
+ */
+@HiltViewModel
+class LoginViewModel @Inject constructor(
+    private val authRepository: AuthRepository
+) : ViewModel() {
+    
+    private val _email = MutableStateFlow("")
+    val email = _email.asStateFlow()
+    
+    private val _password = MutableStateFlow("")
+    val password = _password.asStateFlow()
+    
+    private val _emailError = MutableStateFlow<String?>(null)
+    val emailError = _emailError.asStateFlow()
+    
+    private val _passwordError = MutableStateFlow<String?>(null)
+    val passwordError = _passwordError.asStateFlow()
+    
+    private val _loginUiState = MutableStateFlow<LoginUiState>(LoginUiState.Initial)
+    val loginUiState: StateFlow<LoginUiState> = _loginUiState
+    
+    /**
+     * Update email and validate
+     */
+    fun updateEmail(value: String) {
+        _email.value = value
+        validateEmail()
+    }
+    
+    /**
+     * Update password and validate
+     */
+    fun updatePassword(value: String) {
+        _password.value = value
+        validatePassword()
+    }
+    
+    /**
+     * Validate email format
+     */
+    private fun validateEmail() {
+        val emailValue = _email.value.trim()
+        
+        _emailError.value = when {
+            emailValue.isEmpty() -> "Email is required"
+            // Basic email validation
+            !emailValue.contains('@') || !emailValue.contains('.') -> "Please enter a valid email"
+            else -> null
+        }
+    }
+    
+    /**
+     * Validate password
+     */
+    private fun validatePassword() {
+        val passwordValue = _password.value
+        
+        _passwordError.value = when {
+            passwordValue.isEmpty() -> "Password is required"
+            else -> null
+        }
+    }
+    
+    /**
+     * Attempt to login with current credentials
+     */
+    fun login() {
+        // Validate fields first
+        validateEmail()
+        validatePassword()
+        
+        // Check if there are validation errors
+        if (_emailError.value != null || _passwordError.value != null) {
+            return
+        }
+        
+        // Set loading state
+        _loginUiState.value = LoginUiState.Loading
+        
+        viewModelScope.launch {
+            try {
+                val result = authRepository.login(_email.value.trim(), _password.value)
+                
+                _loginUiState.value = when (result) {
+                    is Result.Success -> {
+                        Timber.d("Login successful")
+                        LoginUiState.Success
+                    }
+                    is Result.Error -> {
+                        Timber.e(result.exception, "Login failed")
+                        LoginUiState.Error(result.message)
+                    }
+                    is Result.Loading -> {
+                        LoginUiState.Loading
+                    }
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Unexpected error during login")
+                _loginUiState.value = LoginUiState.Error("An unexpected error occurred")
+            }
+        }
+    }
+}
+
+/**
+ * UI state for the login screen
+ */
+sealed class LoginUiState {
+    data object Initial : LoginUiState()
+    data object Loading : LoginUiState()
+    data object Success : LoginUiState()
+    data class Error(val message: String) : LoginUiState()
+}

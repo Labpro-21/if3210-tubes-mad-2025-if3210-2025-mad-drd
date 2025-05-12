@@ -117,4 +117,7 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     testImplementation(libs.androidx.room.testing)
     testImplementation(libs.kotlinx.coroutines.test)
+
+    // Timber
+    implementation("com.jakewharton.timber:timber:5.0.1")
 }

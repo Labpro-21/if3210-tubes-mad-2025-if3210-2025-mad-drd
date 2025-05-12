@@ -1,6 +1,5 @@
 package com.example.purrytify.ui.components
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -21,7 +20,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.example.purrytify.ui.theme.PurrytifyBlack
+import com.example.purrytify.ui.theme.*
 
 /**
  * Screen shown when there's no internet connection

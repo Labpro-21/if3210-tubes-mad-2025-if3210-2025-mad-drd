@@ -54,16 +54,10 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.purrytify.R
 import com.example.purrytify.ui.components.NoInternetScreen
-import com.example.purrytify.ui.theme.PurritifyRed
-import com.example.purrytify.ui.theme.PurrytifyBlack
-import com.example.purrytify.ui.theme.PurrytifyDarkGray
-import com.example.purrytify.ui.theme.PurrytifyGreen
-import com.example.purrytify.ui.theme.PurrytifyLightGray
-import com.example.purrytify.ui.theme.PurrytifyLighterBlack
-import com.example.purrytify.ui.theme.PurrytifyWhite
+import com.example.purrytify.ui.theme.*
 
 /**
- * Login screen UI
+ * Login screen UI with Poppins typography
  */
 @Composable
 fun LoginScreen(
@@ -118,7 +112,7 @@ fun LoginScreen(
                 ) {
                     // Logo
                     Image(
-                        painter = painterResource(id = R.drawable.logo_3), // Make sure to add this image
+                        painter = painterResource(id = R.drawable.logo_3),
                         contentDescription = "Purrytify Logo",
                         modifier = Modifier.size(92.dp)
                     )
@@ -128,14 +122,14 @@ fun LoginScreen(
                     // App Title
                     Text(
                         text = "Millions of Songs.",
-                        style = MaterialTheme.typography.titleLarge,
+                        style = MaterialTheme.typography.headlineMedium,
                         color = PurrytifyWhite,
                         textAlign = TextAlign.Center
                     )
 
                     Text(
                         text = "Only on Purrytify.",
-                        style = MaterialTheme.typography.titleLarge,
+                        style = MaterialTheme.typography.headlineMedium,
                         color = PurrytifyWhite,
                         textAlign = TextAlign.Center
                     )
@@ -176,7 +170,13 @@ fun LoginScreen(
                             errorPlaceholderColor = PurrytifyLightGray,
                             cursorColor = PurrytifyWhite,
                         ),
-                        placeholder = { Text("Email") },
+                        placeholder = { 
+                            Text(
+                                text = "Email",
+                                style = MaterialTheme.typography.bodyMedium
+                            ) 
+                        },
+                        textStyle = MaterialTheme.typography.bodyMedium,
                         keyboardOptions = KeyboardOptions(
                             keyboardType = KeyboardType.Email,
                             imeAction = ImeAction.Next
@@ -231,7 +231,13 @@ fun LoginScreen(
                             errorPlaceholderColor = PurrytifyLightGray,
                             cursorColor = PurrytifyWhite,
                         ),
-                        placeholder = { Text("Password") },
+                        placeholder = { 
+                            Text(
+                                text = "Password",
+                                style = MaterialTheme.typography.bodyMedium
+                            ) 
+                        },
+                        textStyle = MaterialTheme.typography.bodyMedium,
                         visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                         keyboardOptions = KeyboardOptions(
                             keyboardType = KeyboardType.Password,
@@ -320,7 +326,7 @@ fun LoginScreen(
             ) {
                 // Background image with albums
                 Image(
-                    painter = painterResource(id = R.drawable.bg_login), // Make sure to add this image
+                    painter = painterResource(id = R.drawable.bg_login),
                     contentDescription = "Login Background",
                     modifier = Modifier
                         .fillMaxWidth()
@@ -332,7 +338,7 @@ fun LoginScreen(
 
                 // Logo
                 Image(
-                    painter = painterResource(id = R.drawable.logo_3), // Make sure to add this image
+                    painter = painterResource(id = R.drawable.logo_3),
                     contentDescription = "Purrytify Logo",
                     modifier = Modifier.size(92.dp)
                 )
@@ -348,14 +354,14 @@ fun LoginScreen(
                     // App Title
                     Text(
                         text = "Millions of Songs.",
-                        style = MaterialTheme.typography.titleLarge,
+                        style = MaterialTheme.typography.headlineSmall,
                         color = PurrytifyWhite,
                         textAlign = TextAlign.Center
                     )
 
                     Text(
                         text = "Only on Purrytify.",
-                        style = MaterialTheme.typography.titleLarge,
+                        style = MaterialTheme.typography.headlineSmall,
                         color = PurrytifyWhite,
                         textAlign = TextAlign.Center
                     )
@@ -390,7 +396,13 @@ fun LoginScreen(
                             errorPlaceholderColor = PurrytifyLightGray,
                             cursorColor = PurrytifyWhite,
                         ),
-                        placeholder = { Text("Email") },
+                        placeholder = { 
+                            Text(
+                                text = "Email",
+                                style = MaterialTheme.typography.bodyMedium
+                            ) 
+                        },
+                        textStyle = MaterialTheme.typography.bodyMedium,
                         keyboardOptions = KeyboardOptions(
                             keyboardType = KeyboardType.Email,
                             imeAction = ImeAction.Next
@@ -445,7 +457,13 @@ fun LoginScreen(
                             errorPlaceholderColor = PurrytifyLightGray,
                             cursorColor = PurrytifyWhite,
                         ),
-                        placeholder = { Text("Password") },
+                        placeholder = { 
+                            Text(
+                                text = "Password",
+                                style = MaterialTheme.typography.bodyMedium
+                            ) 
+                        },
+                        textStyle = MaterialTheme.typography.bodyMedium,
                         visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                         keyboardOptions = KeyboardOptions(
                             keyboardType = KeyboardType.Password,

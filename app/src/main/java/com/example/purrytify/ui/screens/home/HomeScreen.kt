@@ -14,8 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.example.purrytify.ui.theme.PurrytifyBlack
-import com.example.purrytify.ui.theme.PurrytifyWhite
+import com.example.purrytify.ui.theme.*
 
 /**
  * Home screen displaying recently played songs and new songs
@@ -48,6 +47,24 @@ fun HomeScreen(
                 text = "Home screen coming soon!",
                 style = MaterialTheme.typography.bodyLarge,
                 color = PurrytifyWhite.copy(alpha = 0.7f),
+                textAlign = TextAlign.Center
+            )
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            Text(
+                text = "Your music journey begins here.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = PurrytifyWhite.copy(alpha = 0.6f),
+                textAlign = TextAlign.Center
+            )
+            
+            Spacer(modifier = Modifier.height(32.dp))
+            
+            Text(
+                text = "Stay tuned for exciting features!",
+                style = MaterialTheme.typography.labelLarge,
+                color = PurrytifyGreen,
                 textAlign = TextAlign.Center
             )
         }

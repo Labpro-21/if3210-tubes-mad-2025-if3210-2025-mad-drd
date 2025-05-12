@@ -5,7 +5,6 @@ package com.example.purrytify.ui.navigation
  */
 object Routes {
     // Auth routes
-    const val SPLASH = "splash"
     const val LOGIN = "login"
     
     // Main routes

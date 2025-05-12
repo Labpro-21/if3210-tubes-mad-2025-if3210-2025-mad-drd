@@ -32,12 +32,14 @@ object AppModule {
     
     @Provides
     @Singleton
+    @UserPreferencesDataStoreQualifier
     fun provideUserPreferencesDataStore(@ApplicationContext context: Context): DataStore<Preferences> {
         return context.userPrefsDataStore
     }
     
     @Provides
     @Singleton
+    @TokenDataStoreQualifier
     fun provideTokenDataStore(@ApplicationContext context: Context): DataStore<Preferences> {
         return context.tokenDataStore
     }

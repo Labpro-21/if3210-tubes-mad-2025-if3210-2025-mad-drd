@@ -5,6 +5,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import com.example.purrytify.di.UserPreferencesDataStoreQualifier
 import com.example.purrytify.domain.model.User
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -16,7 +17,7 @@ import javax.inject.Singleton
  */
 @Singleton
 class UserPreferences @Inject constructor(
-    private val dataStore: DataStore<Preferences>
+    @UserPreferencesDataStoreQualifier private val dataStore: DataStore<Preferences>
 ) {
     // Keys for the datastore
     private object PreferencesKeys {

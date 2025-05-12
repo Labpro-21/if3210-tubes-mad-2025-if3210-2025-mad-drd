@@ -30,9 +30,10 @@ class TokenService @Inject constructor(
     // The JWT token expires after 5 minutes (300 seconds)
     // Schedule the check a bit earlier to have time for refresh
     private val TOKEN_CHECK_INTERVAL_MINUTES = 4L
-    
-    private val workManager = WorkManager.getInstance(context)
-    
+
+    // Don't initialize in constructor - this will be null until onCreate of Application is called
+    private val workManager by lazy { WorkManager.getInstance(context) }
+
     /**
      * Start the periodic token check worker
      */
@@ -42,35 +43,35 @@ class TokenService @Inject constructor(
             if (!authRepository.isLoggedIn()) {
                 return@launch
             }
-            
+
             val tokenCheckRequest = PeriodicWorkRequestBuilder<TokenCheckWorker>(
                 TOKEN_CHECK_INTERVAL_MINUTES, TimeUnit.MINUTES
             ).build()
-            
+
             workManager.enqueueUniquePeriodicWork(
                 TokenCheckWorker.WORK_NAME,
                 ExistingPeriodicWorkPolicy.UPDATE,
                 tokenCheckRequest
             )
-            
+
             // Observe the worker to handle token refresh failures
             observeTokenWorker()
         }
     }
-    
+
     /**
      * Stop the periodic token check worker
      */
     fun stopTokenCheck() {
         workManager.cancelUniqueWork(TokenCheckWorker.WORK_NAME)
     }
-    
+
     /**
      * Observe the token worker to handle token refresh failures
      */
     private fun observeTokenWorker() {
         val workInfoLiveData = workManager.getWorkInfosForUniqueWorkLiveData(TokenCheckWorker.WORK_NAME)
-        
+
         externalScope.launch {
             workInfoLiveData.asFlow().collectLatest { workInfoList ->
                 workInfoList.forEach { workInfo ->
@@ -78,7 +79,7 @@ class TokenService @Inject constructor(
                         // Token refresh failed, user needs to login again
                         Timber.d("JWT token refresh failed, logging out user")
                         authRepository.logout()
-                        
+
                         // Stop the worker since user is logged out
                         stopTokenCheck()
                     }

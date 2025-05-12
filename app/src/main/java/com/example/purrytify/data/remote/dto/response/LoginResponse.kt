@@ -6,7 +6,7 @@ import com.google.gson.annotations.SerializedName
  * Data class representing the login response from the API
  */
 data class LoginResponse(
-    @SerializedName("token")
+    @SerializedName("accessToken")
     val token: String,
     
     @SerializedName("refreshToken")

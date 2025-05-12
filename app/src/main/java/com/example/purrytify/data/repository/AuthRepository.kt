@@ -33,9 +33,11 @@ class AuthRepository @Inject constructor(
             val loginResponse = authApi.login(loginRequest)
             
             if (!loginResponse.isSuccessful) {
-                return Result.Error(
-                    IOException("Login failed with code: ${loginResponse.code()}")
-                )
+                // Login failed with error code
+                return when(loginResponse.code()) {
+                    401, 400 -> Result.Error(IOException("Invalid username or password"))
+                    else -> Result.Error(IOException("Login failed with code: ${loginResponse.code()}"))
+                }
             }
             
             // Store tokens
@@ -47,7 +49,7 @@ class AuthRepository @Inject constructor(
                 refreshToken = tokenData.refreshToken
             )
             
-            // Fetch and store user profile
+            // Use the token directly from the response for the profile request
             val authHeader = "Bearer ${tokenData.token}"
             val profileResponse = profileApi.getProfile(authHeader)
             

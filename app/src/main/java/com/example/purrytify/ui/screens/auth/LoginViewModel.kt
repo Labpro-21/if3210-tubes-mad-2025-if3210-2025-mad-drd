@@ -97,19 +97,29 @@ class LoginViewModel @Inject constructor(
             try {
                 val result = authRepository.login(_email.value.trim(), _password.value)
                 
-                _loginUiState.value = when (result) {
-                    is Result.Success -> {
-                        Timber.d("Login successful")
-                        LoginUiState.Success
-                    }
-                    is Result.Error -> {
-                        Timber.e(result.exception, "Login failed")
-                        LoginUiState.Error(result.message)
-                    }
-                    is Result.Loading -> {
-                        LoginUiState.Loading
+            when (result) {
+                is Result.Success -> {
+                    Timber.d("Login successful")
+                    _loginUiState.value = LoginUiState.Success
+                }
+                is Result.Error -> {
+                    Timber.e(result.exception, "Login failed")
+                    
+                    // For credential errors, ONLY set field errors, NOT the general UI state error
+                    if (result.message.contains("Invalid username or password", ignoreCase = true)) {
+                        _emailError.value = "Invalid username or password"
+                        _passwordError.value = "Invalid username or password"
+                        _loginUiState.value = LoginUiState.Initial // Reset UI state
+                    } else {
+                        // For other errors, use the general UI state error
+                        _loginUiState.value = LoginUiState.Error(result.message)
                     }
                 }
+                is Result.Loading -> {
+                    _loginUiState.value = LoginUiState.Loading
+                }
+            }
+            
             } catch (e: Exception) {
                 Timber.e(e, "Unexpected error during login")
                 _loginUiState.value = LoginUiState.Error("An unexpected error occurred")

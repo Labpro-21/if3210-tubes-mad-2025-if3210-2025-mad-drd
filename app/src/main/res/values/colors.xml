@@ -7,4 +7,13 @@
     <color name="teal_700">#FF018786</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+    
+    <!-- Purrytify color system -->
+    <color name="purrytify_green">#FF1DB954</color>
+    <color name="purrytify_lighter_black">#FF212121</color>
+    <color name="purrytify_black">#FF121212</color>
+    <color name="purrytify_dark_gray">#FF535353</color>
+    <color name="purrytify_light_gray">#FFB3B3B3</color>
+    <color name="purrytify_white">#FFFFFFFF</color>
+    <color name="purrytify_red">#FFFF0000</color>
 </resources>

@@ -3,10 +3,13 @@ package com.example.purrytify.ui.navigation
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.navArgument
 import com.example.purrytify.ui.screens.auth.LoginScreen
 import com.example.purrytify.ui.screens.home.HomeScreen
+import com.example.purrytify.ui.screens.library.LibraryScreen
 
 @Composable
 fun PurrytifyNavHost(
@@ -41,14 +44,28 @@ fun PurrytifyNavHost(
             )
         }
         
-        // Library Screen placeholder
+        // Library Screen
         composable(Routes.LIBRARY) {
-            // Implement when we get to the Library feature
+            LibraryScreen(
+                onNavigateToPlayer = { songId ->
+                    navController.navigate("${Routes.PLAYER}/$songId")
+                }
+            )
         }
         
         // Profile Screen placeholder
         composable(Routes.PROFILE) {
             // Implement when we get to the Profile feature
+        }
+        
+        // Player Screen
+        composable(
+            route = "${Routes.PLAYER}/{songId}",
+            arguments = listOf(navArgument("songId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val songId = backStackEntry.arguments?.getString("songId") ?: ""
+            // PlayerScreen(songId = songId, onBackPressed = { navController.popBackStack() })
+            // Implement when we get to the Player feature
         }
         
         // Add more routes for other screens as they're implemented

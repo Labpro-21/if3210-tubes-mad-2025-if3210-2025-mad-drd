@@ -78,6 +78,12 @@ dependencies {
     implementation(libs.hilt.work)
     kapt("androidx.hilt:hilt-compiler:1.0.0")
 
+    // RecyclerView
+    implementation(libs.androidx.recyclerview)
+    
+    // ConstraintLayout dependency
+    implementation("androidx.constraintlayout:constraintlayout:2.1.4")
+
     // Room
     implementation(libs.androidx.room.runtime)
     kapt(libs.androidx.room.compiler)     // Use kapt for Room

@@ -46,6 +46,9 @@ object AppModule {
     @Provides
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): PurritifyDatabase {
+        
+        // context.deleteDatabase("purrytify_database")
+
         return Room.databaseBuilder(
             context,
             PurritifyDatabase::class.java,

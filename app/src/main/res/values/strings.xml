@@ -1,3 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">purrytify</string>
+    
+    <!-- Library strings -->
+    <string name="your_library">Your Library</string>
+    <string name="add_song">Add Song</string>
+    <string name="search_songs_or_artists">Search songs or artists</string>
+    <string name="all">All</string>
+    <string name="liked">Liked</string>
+    <string name="downloaded">Downloaded</string>
+    <string name="no_songs_available">No songs available</string>
+    <string name="tap_to_add_songs">Tap the + button to add songs</string>
+    <string name="like_songs_to_see_them">Like some songs to see them here</string>
+    <string name="no_matching_songs">No matching songs found</string>
+    <string name="try_different_search">Try a different search term</string>
+    
+    <!-- Upload song strings -->
+    <string name="upload_song">Upload Song</string>
+    <string name="upload_photo">Upload Photo</string>
+    <string name="upload_file">Upload File</string>
+    <string name="cover_art">Cover Art</string>
+    <string name="audio_file">Audio File</string>
+    <string name="title">Title</string>
+    <string name="artist">Artist</string>
+    <string name="save">Save</string>
+    <string name="cancel">Cancel</string>
+    <string name="song_artwork">Song Artwork</string>
+    <string name="selected">Selected</string>
 </resources>

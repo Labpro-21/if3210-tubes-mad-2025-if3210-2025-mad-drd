@@ -65,4 +65,11 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+    
+    override fun onResume() {
+        super.onResume()
+        
+        // Refresh network state when activity resumes
+        networkManager.refreshNetworkState()
+    }
 }

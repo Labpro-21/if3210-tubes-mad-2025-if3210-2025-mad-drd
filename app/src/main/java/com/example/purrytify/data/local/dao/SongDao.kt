@@ -63,4 +63,10 @@ interface SongDao {
 
     @Query("SELECT COUNT(*) FROM song WHERE userId = :userId AND likedAt IS NOT NULL")
     suspend fun getLikedSongCount(userId: Int): Int
+    
+    /**
+     * Count songs that have been listened to (have lastPlayedAt not null)
+     */
+    @Query("SELECT COUNT(*) FROM song WHERE userId = :userId AND lastPlayedAt IS NOT NULL")
+    suspend fun getListenedSongCount(userId: Int): Int
 }

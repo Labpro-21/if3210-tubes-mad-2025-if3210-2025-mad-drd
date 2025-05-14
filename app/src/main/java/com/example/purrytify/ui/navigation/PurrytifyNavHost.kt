@@ -10,6 +10,7 @@ import androidx.navigation.navArgument
 import com.example.purrytify.ui.screens.auth.LoginScreen
 import com.example.purrytify.ui.screens.home.HomeScreen
 import com.example.purrytify.ui.screens.library.LibraryScreen
+import com.example.purrytify.ui.screens.profile.ProfileScreen
 
 @Composable
 fun PurrytifyNavHost(
@@ -53,9 +54,16 @@ fun PurrytifyNavHost(
             )
         }
         
-        // Profile Screen placeholder
+        // Profile Screen
         composable(Routes.PROFILE) {
-            // Implement when we get to the Profile feature
+            ProfileScreen(
+                onNavigateToLogin = {
+                    navController.navigate(Routes.LOGIN) {
+                        popUpTo(Routes.HOME) { inclusive = true }
+                    }
+                },
+                isNetworkAvailable = isNetworkAvailable
+            )
         }
         
         // Player Screen

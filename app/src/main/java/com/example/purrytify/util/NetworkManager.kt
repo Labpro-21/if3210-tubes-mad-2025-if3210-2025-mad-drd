@@ -27,7 +27,7 @@ class NetworkManager @Inject constructor(
     @ApplicationContext private val context: Context,
     private val externalScope: CoroutineScope
 ) {
-    private val _isNetworkAvailable = MutableStateFlow(false)
+    private val _isNetworkAvailable = MutableStateFlow(true) // Default to true to prevent initial false negatives
     val isNetworkAvailable: StateFlow<Boolean> = _isNetworkAvailable
 
     private var networkObservingJob: Job? = null
@@ -41,6 +41,11 @@ class NetworkManager @Inject constructor(
     // Main thread handler for showing toasts
     private val mainHandler = Handler(Looper.getMainLooper())
 
+    init {
+        // Initialize network observation
+        startObservingNetwork()
+    }
+    
     /**
      * Start observing network connectivity changes
      */
@@ -50,6 +55,12 @@ class NetworkManager @Inject constructor(
 
         // Start a new observation with error handling
         try {
+            // First check the current network state
+            val currentState = NetworkUtil.isNetworkAvailable(context)
+            _isNetworkAvailable.value = currentState
+            lastNetworkState = currentState
+            
+            // Then start observing for changes
             networkObservingJob = NetworkUtil.observeNetworkConnectivity(context)
                 .onEach { isAvailable ->
                     _isNetworkAvailable.value = isAvailable
@@ -63,10 +74,27 @@ class NetworkManager @Inject constructor(
                 }
                 .catch { exception ->
                     Log.e("NetworkManager", "Error in network flow: ${exception.message}", exception)
+                    // If we get an error, attempt to recover by checking the network directly
+                    _isNetworkAvailable.value = NetworkUtil.isNetworkAvailable(context)
                 }
                 .launchIn(externalScope)
         } catch (e: Exception) {
             Log.e("NetworkManager", "Failed to start network observation: ${e.message}", e)
+            // If we fail to start observation, assume network is available to prevent false negatives
+            _isNetworkAvailable.value = true
+        }
+    }
+
+    /**
+     * Force a refresh of the network state
+     */
+    fun refreshNetworkState() {
+        try {
+            val isAvailable = NetworkUtil.isNetworkAvailable(context)
+            _isNetworkAvailable.value = isAvailable
+            Log.d("NetworkManager", "Network state refreshed: $isAvailable")
+        } catch (e: Exception) {
+            Log.e("NetworkManager", "Error refreshing network state: ${e.message}", e)
         }
     }
 

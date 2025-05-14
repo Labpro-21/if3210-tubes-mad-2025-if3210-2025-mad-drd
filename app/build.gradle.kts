@@ -1,7 +1,7 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
-    alias(libs.plugins.ksp)
+    alias(libs.plugins.kotlin.kapt)
     alias(libs.plugins.hilt)
     alias(libs.plugins.jetbrains.compose)
 }
@@ -73,14 +73,14 @@ dependencies {
 
     // Hilt
     implementation(libs.hilt.android)
-    ksp(libs.hilt.compiler) // Use ksp for Hilt
+    kapt(libs.hilt.android.compiler)
     implementation(libs.hilt.navigation.compose)
     implementation(libs.hilt.work)
-    ksp(libs.hilt.android.compiler) // For Hilt Worker support with KSP
+    kapt(libs.hilt.android.compiler)
 
     // Room
     implementation(libs.androidx.room.runtime)
-    ksp(libs.androidx.room.compiler) // Use ksp for Room
+    kapt(libs.androidx.room.compiler)     // Use kapt for Room
     implementation(libs.androidx.room.ktx)
 
     // Retrofit & OkHttp
@@ -96,7 +96,7 @@ dependencies {
     // DataStore
     implementation(libs.androidx.datastore.preferences)
 
-    // WorkManager
+    // WorkManager (core library, Hilt integration is above)
     implementation(libs.androidx.work.runtime.ktx)
 
     // Media3

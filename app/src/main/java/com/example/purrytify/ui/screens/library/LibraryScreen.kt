@@ -17,15 +17,18 @@ import androidx.compose.material.icons.filled.Clear
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.zIndex
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -52,144 +55,173 @@ fun LibraryScreen(
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
 
+    // Use different padding values for landscape and portrait
+    val topPadding = if (isLandscape) 16.dp else 24.dp
+    val horizontalPadding = if (isLandscape) 24.dp else 16.dp
+
+    // Reset state when screen is disposed (navigating away)
+    DisposableEffect(key1 = Unit) {
+        onDispose {
+            viewModel.resetState()
+        }
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(PurrytifyBlack)
     ) {
-        // Portrait layout
+        // Use a Column with a Box layout to make the header sticky
         Column(
             modifier = Modifier.fillMaxSize()
         ) {
-            // Header with title and add button
-            Row(
+            // Header section with fixed position
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 24.dp)
-                    .padding(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                    .background(PurrytifyBlack)
+                    // Add z-index to ensure header stays on top
+                    .zIndex(1f)
+                    // Add shadow to create visual separation
+                    .shadow(elevation = 4.dp)
             ) {
-                Text(
-                    text = stringResource(R.string.your_library),
-                    style = MaterialTheme.typography.titleLarge,
-                    color = PurrytifyWhite,
-                    fontWeight = FontWeight.Bold
-                )
-
-                // Add song button
-                IconButton(
-                    onClick = { viewModel.showAddSongDialog() },
-                    modifier = Modifier.size(48.dp)
+                // Header with title and add button
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = topPadding)
+                        .padding(horizontal = horizontalPadding),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = stringResource(R.string.add_song),
-                        tint = PurrytifyWhite,
-                        modifier = Modifier.size(24.dp)
+                    Text(
+                        text = stringResource(R.string.your_library),
+                        style = MaterialTheme.typography.titleLarge,
+                        color = PurrytifyWhite,
+                        fontWeight = FontWeight.Bold
                     )
-                }
-            }
 
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Search Bar
-            SearchBar(
-                searchQuery = searchQuery,
-                onSearchQueryChange = { viewModel.setSearchQuery(it) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Tab filters
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 16.dp)
-                    .padding(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.Start
-            ) {
-                // Custom chip buttons instead of FilterChip
-                TabChip(
-                    text = stringResource(R.string.all),
-                    isSelected = activeTab == LibraryTab.ALL,
-                    onClick = { viewModel.switchTab(LibraryTab.ALL) }
-                )
-
-                Spacer(modifier = Modifier.width(8.dp))
-
-                TabChip(
-                    text = stringResource(R.string.liked),
-                    isSelected = activeTab == LibraryTab.LIKED,
-                    onClick = { viewModel.switchTab(LibraryTab.LIKED) }
-                )
-
-                Spacer(modifier = Modifier.width(8.dp))
-
-                TabChip(
-                    text = stringResource(R.string.downloaded),
-                    isSelected = activeTab == LibraryTab.DOWNLOADED,
-                    onClick = { viewModel.switchTab(LibraryTab.DOWNLOADED) }
-                )
-            }
-
-            // Main content based on UI state
-            when (uiState) {
-                is LibraryUiState.Loading -> {
-                    LoadingView()
-                }
-
-                is LibraryUiState.Empty -> {
-                    EmptyStateContent(
-                        activeTab = activeTab,
-                        searchQuery = searchQuery
-                    )
-                }
-
-                is LibraryUiState.Success -> {
-                    val songs = (uiState as LibraryUiState.Success).songs
-
-                    AndroidView(
-                        factory = { context ->
-                            try {
-                                val themedContext = ContextThemeWrapper(context, R.style.Theme_Purrytify)
-                                RecyclerView(themedContext).apply {
-                                    layoutManager = LinearLayoutManager(themedContext)
-                                    adapter = SongsAdapter(songs, currentPlayingSong) { song ->
-                                        viewModel.playSong(song)
-                                        onNavigateToPlayer(song.id)
-                                    }
-                                }
-                            } catch (e: Exception) {
-                                Log.e("AndroidViewError", "Error inflating RecyclerView", e)
-                                throw e
-                            }
-                        },
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(horizontal = 16.dp),
-                        update = { recyclerView ->
-                            (recyclerView.adapter as? SongsAdapter)?.apply {
-                                updateSongs(songs)
-                                updatePlayingSong(currentPlayingSong)
-                            }
-                        }
-                    )
-                }
-
-                is LibraryUiState.Error -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
+                    // Add song button
+                    IconButton(
+                        onClick = { viewModel.showAddSongDialog() },
+                        modifier = Modifier.size(48.dp)
                     ) {
-                        Text(
-                            text = (uiState as LibraryUiState.Error).message,
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = PurritifyRed
+                        Icon(
+                            imageVector = Icons.Default.Add,
+                            contentDescription = stringResource(R.string.add_song),
+                            tint = PurrytifyWhite,
+                            modifier = Modifier.size(24.dp)
                         )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Search Bar
+                SearchBar(
+                    searchQuery = searchQuery,
+                    onSearchQueryChange = { viewModel.setSearchQuery(it) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = horizontalPadding)
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Tab filters
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 16.dp)
+                        .padding(horizontal = horizontalPadding),
+                    horizontalArrangement = Arrangement.Start
+                ) {
+                    // Custom chip buttons
+                    TabChip(
+                        text = stringResource(R.string.all),
+                        isSelected = activeTab == LibraryTab.ALL,
+                        onClick = { viewModel.switchTab(LibraryTab.ALL) }
+                    )
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    TabChip(
+                        text = stringResource(R.string.liked),
+                        isSelected = activeTab == LibraryTab.LIKED,
+                        onClick = { viewModel.switchTab(LibraryTab.LIKED) }
+                    )
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    TabChip(
+                        text = stringResource(R.string.downloaded),
+                        isSelected = activeTab == LibraryTab.DOWNLOADED,
+                        onClick = { viewModel.switchTab(LibraryTab.DOWNLOADED) }
+                    )
+                }
+            }
+
+            // Content area that scrolls underneath the header
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(PurrytifyBlack)
+            ) {
+                // Main content based on UI state
+                when (uiState) {
+                    is LibraryUiState.Loading -> {
+                        LoadingView()
+                    }
+
+                    is LibraryUiState.Empty -> {
+                        EmptyStateContent(
+                            activeTab = activeTab,
+                            searchQuery = searchQuery
+                        )
+                    }
+
+                    is LibraryUiState.Success -> {
+                        val songs = (uiState as LibraryUiState.Success).songs
+
+                        AndroidView(
+                            factory = { context ->
+                                try {
+                                    val themedContext = ContextThemeWrapper(context, R.style.Theme_Purrytify)
+                                    RecyclerView(themedContext).apply {
+                                        layoutManager = LinearLayoutManager(themedContext)
+                                        adapter = SongsAdapter(songs, currentPlayingSong) { song ->
+                                            viewModel.playSong(song)
+                                            onNavigateToPlayer(song.id)
+                                        }
+                                    }
+                                } catch (e: Exception) {
+                                    Log.e("AndroidViewError", "Error inflating RecyclerView", e)
+                                    throw e
+                                }
+                            },
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = horizontalPadding),
+                            update = { recyclerView ->
+                                (recyclerView.adapter as? SongsAdapter)?.apply {
+                                    updateSongs(songs)
+                                    updatePlayingSong(currentPlayingSong)
+                                }
+                            }
+                        )
+                    }
+
+                    is LibraryUiState.Error -> {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = (uiState as LibraryUiState.Error).message,
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = PurritifyRed
+                            )
+                        }
                     }
                 }
             }
@@ -270,10 +302,11 @@ fun EmptyStateContent(
             Text(
                 text = if (searchQuery.isNotEmpty())
                     stringResource(R.string.try_different_search)
-                else if (activeTab == LibraryTab.ALL)
-                    stringResource(R.string.tap_to_add_songs)
-                else
-                    stringResource(R.string.like_songs_to_see_them),
+                else when (activeTab) {
+                    LibraryTab.ALL -> stringResource(R.string.tap_to_add_songs)
+                    LibraryTab.LIKED -> stringResource(R.string.like_songs_to_see_them)
+                    LibraryTab.DOWNLOADED -> stringResource(R.string.download_songs_to_see_them)
+                },
                 style = MaterialTheme.typography.bodyMedium,
                 color = PurrytifyLightGray
             )
@@ -320,14 +353,21 @@ fun SearchBar(
         modifier = modifier
             .fillMaxWidth()
             .heightIn(min = 56.dp),
-        colors = TextFieldDefaults.textFieldColors(
+        colors = TextFieldDefaults.colors(
             focusedTextColor = PurrytifyWhite,
             unfocusedTextColor = PurrytifyWhite,
-            containerColor = PurrytifyLighterBlack,
+            focusedContainerColor = PurrytifyLighterBlack,
+            unfocusedContainerColor = PurrytifyLighterBlack,
             cursorColor = PurrytifyGreen,
             focusedIndicatorColor = Color.Transparent,
             unfocusedIndicatorColor = Color.Transparent,
-            disabledIndicatorColor = Color.Transparent
+            disabledIndicatorColor = Color.Transparent,
+            focusedPlaceholderColor = PurrytifyLightGray,
+            unfocusedPlaceholderColor = PurrytifyLightGray,
+            focusedLeadingIconColor = PurrytifyLightGray,
+            unfocusedLeadingIconColor = PurrytifyLightGray,
+            focusedTrailingIconColor = PurrytifyLightGray,
+            unfocusedTrailingIconColor = PurrytifyLightGray
         ),
         shape = RoundedCornerShape(12.dp),
         singleLine = true

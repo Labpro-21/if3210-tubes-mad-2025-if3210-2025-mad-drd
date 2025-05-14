@@ -82,39 +82,74 @@ class LibraryViewModel @Inject constructor(
     @OptIn(ExperimentalCoroutinesApi::class)
     private fun setupSongsCollection() {
         viewModelScope.launch {
-            // Combine active tab, search query, and user ID
-            combine(
+            // Start with a loading state
+            _uiState.value = LibraryUiState.Loading
+            
+            // Create a trigger flow that emits immediately on initialization and then when tab or search changes
+            val initialLoadTrigger = MutableStateFlow(Unit)
+            
+            // Combine trigger with tab and search to ensure initial load works
+            val changeFlow = combine(
+                initialLoadTrigger,
                 _activeTab,
                 _searchQuery,
                 _currentUserId.filterNotNull()
-            ) { tab, query, userId ->
-                Triple(tab, query, userId)
-            }.flatMapLatest { (tab, query, userId) ->
-                // Get songs based on the active tab
-                when (tab) {
-                    LibraryTab.ALL -> songRepository.getAllSongs(userId)
-                    LibraryTab.LIKED -> songRepository.getLikedSongs(userId)
-                    LibraryTab.DOWNLOADED -> songRepository.getDownloadedSongs(userId)
+            ) { _, tab, query, userId -> Triple(tab, query, userId) }
+            
+            // Use this flow to handle loading state and data fetching
+            changeFlow
+                .onEach { (tab, _, _) ->
+                    // Set loading state when tab or search changes
+                    Log.d(TAG, "Loading songs for tab: $tab")
+                    _uiState.value = LibraryUiState.Loading
                 }
-            }.map { songs ->
-                // Filter songs based on search query
-                if (_searchQuery.value.isBlank()) {
-                    songs
-                } else {
-                    val searchLower = _searchQuery.value.lowercase()
-                    songs.filter { song ->
-                        song.title.lowercase().contains(searchLower) ||
-                        song.artist.lowercase().contains(searchLower)
+                .collectLatest { (tab, query, userId) ->
+                    Log.d(TAG, "Fetching songs for tab: $tab, query: '$query', userId: $userId")
+                    
+                    try {
+                        // Get songs flow based on the tab
+                        val songsFlow = when (tab) {
+                            LibraryTab.ALL -> songRepository.getAllSongs(userId)
+                            LibraryTab.LIKED -> songRepository.getLikedSongs(userId)
+                            LibraryTab.DOWNLOADED -> songRepository.getDownloadedSongs(userId)
+                        }
+                        
+                        // Collect the songs flow and update UI state
+                        songsFlow.collect { songs ->
+                            // Filter songs based on search query
+                            val filteredSongs = if (query.isBlank()) {
+                                songs
+                            } else {
+                                val searchLower = query.lowercase()
+                                songs.filter { song ->
+                                    song.title.lowercase().contains(searchLower) ||
+                                    song.artist.lowercase().contains(searchLower)
+                                }
+                            }
+                            
+                            Log.d(TAG, "Fetched ${filteredSongs.size} songs for tab: $tab")
+                            
+                            // Update UI state
+                            _uiState.value = if (filteredSongs.isEmpty()) {
+                                LibraryUiState.Empty
+                            } else {
+                                LibraryUiState.Success(filteredSongs)
+                            }
+                        }
+                    } catch (e: Exception) {
+                        // Only set error state for non-cancellation exceptions
+                        if (e is kotlinx.coroutines.CancellationException || 
+                            e.cause is kotlinx.coroutines.CancellationException ||
+                            e.message?.contains("cancelled", ignoreCase = true) == true) {
+                            // This is expected when switching tabs, just log it
+                            Log.d(TAG, "Flow collection cancelled (expected): ${e.message}")
+                        } else {
+                            // Real error, update UI
+                            Log.e(TAG, "Error fetching songs: ${e.message}", e)
+                            _uiState.value = LibraryUiState.Error("Failed to load songs: ${e.message}")
+                        }
                     }
                 }
-            }.collect { filteredSongs ->
-                // Update UI state based on filtered songs
-                _uiState.value = if (filteredSongs.isEmpty()) {
-                    LibraryUiState.Empty
-                } else {
-                    LibraryUiState.Success(filteredSongs)
-                }
-            }
         }
     }
     
@@ -218,5 +253,13 @@ class LibraryViewModel @Inject constructor(
             val userId = _currentUserId.value ?: return@launch
             songRepository.toggleLike(song.id, userId, !song.isLiked)
         }
+    }
+    
+    /**
+     * Reset the filter state when navigating away from the Library screen
+     */
+    fun resetState() {
+        _activeTab.value = LibraryTab.ALL
+        _searchQuery.value = ""
     }
 }

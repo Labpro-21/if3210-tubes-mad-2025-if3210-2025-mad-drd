@@ -13,7 +13,7 @@ fun PurrytifyNavHost(
     navController: NavHostController,
     isNetworkAvailable: Boolean,
     modifier: Modifier = Modifier,
-    startDestination: String = Routes.HOME
+    startDestination: String
 ) {
     NavHost(
         navController = navController,

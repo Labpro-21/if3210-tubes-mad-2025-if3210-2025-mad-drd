@@ -29,7 +29,7 @@ class TokenService @Inject constructor(
 ) {
     // The JWT token expires after 5 minutes (300 seconds)
     // Schedule the refresh a bit earlier to ensure token is always valid
-    private val TOKEN_REFRESH_INTERVAL_MINUTES = 1L
+    private val TOKEN_REFRESH_INTERVAL_MINUTES = 4L
 
     // Don't initialize in constructor - this will be null until onCreate of Application is called
     private val workManager by lazy { WorkManager.getInstance(context) }

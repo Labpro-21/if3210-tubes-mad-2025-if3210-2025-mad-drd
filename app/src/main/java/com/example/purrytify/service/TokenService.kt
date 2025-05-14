@@ -1,6 +1,7 @@
 package com.example.purrytify.service
 
 import android.content.Context
+import android.util.Log
 import androidx.lifecycle.asFlow
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
@@ -13,7 +14,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.launch
-import timber.log.Timber
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -77,7 +77,8 @@ class TokenService @Inject constructor(
                 workInfoList.forEach { workInfo ->
                     if (workInfo.state == WorkInfo.State.FAILED) {
                         // Token refresh failed, user needs to login again
-                        Timber.d("JWT token refresh failed, logging out user")
+
+                        Log.d("TokenService", "Token refresh failed, logging out user")
                         authRepository.logout()
 
                         // Stop the worker since user is logged out

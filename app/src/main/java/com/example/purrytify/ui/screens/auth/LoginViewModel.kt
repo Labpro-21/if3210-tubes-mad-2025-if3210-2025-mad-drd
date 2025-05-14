@@ -1,5 +1,6 @@
 package com.example.purrytify.ui.screens.auth
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.purrytify.data.repository.AuthRepository
@@ -9,7 +10,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import timber.log.Timber
 import javax.inject.Inject
 
 /**
@@ -99,11 +99,11 @@ class LoginViewModel @Inject constructor(
                 
             when (result) {
                 is Result.Success -> {
-                    Timber.d("Login successful")
+                    Log.d("LoginViewModel", "Login successful")
                     _loginUiState.value = LoginUiState.Success
                 }
                 is Result.Error -> {
-                    Timber.e(result.exception, "Login failed")
+                    Log.e("LoginViewModel", "Login failed: ${result.exception.message}")
                     
                     // For credential errors, ONLY set field errors, NOT the general UI state error
                     if (result.message.contains("Invalid username or password", ignoreCase = true)) {
@@ -121,7 +121,7 @@ class LoginViewModel @Inject constructor(
             }
             
             } catch (e: Exception) {
-                Timber.e(e, "Unexpected error during login")
+                Log.e("LoginViewModel", "Unexpected error during login: ${e.message}")
                 _loginUiState.value = LoginUiState.Error("An unexpected error occurred")
             }
         }

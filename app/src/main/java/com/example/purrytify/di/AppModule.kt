@@ -16,7 +16,6 @@ import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import timber.log.Timber
 import javax.inject.Singleton
 
 // Extension properties for DataStore instances
@@ -70,18 +69,5 @@ object AppModule {
     @Singleton
     fun provideApplicationScope(): CoroutineScope {
         return CoroutineScope(SupervisorJob() + Dispatchers.Default)
-    }
-    
-    @Provides
-    @Singleton
-    fun provideTimberTree(): Timber.Tree {
-        return Timber.DebugTree()
-    }
-    
-    @Provides
-    @Singleton
-    fun initializeTimber(tree: Timber.Tree): Boolean {
-        Timber.plant(tree)
-        return true
     }
 }

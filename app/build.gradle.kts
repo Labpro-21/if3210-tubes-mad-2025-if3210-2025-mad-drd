@@ -76,7 +76,7 @@ dependencies {
     kapt(libs.hilt.android.compiler)
     implementation(libs.hilt.navigation.compose)
     implementation(libs.hilt.work)
-    kapt(libs.hilt.android.compiler)
+    kapt("androidx.hilt:hilt-compiler:1.0.0")
 
     // Room
     implementation(libs.androidx.room.runtime)

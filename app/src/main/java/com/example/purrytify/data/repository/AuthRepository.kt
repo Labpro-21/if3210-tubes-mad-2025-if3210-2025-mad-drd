@@ -118,7 +118,7 @@ class AuthRepository @Inject constructor(
     /**
      * Refresh the JWT token using the refresh token
      */
-    private suspend fun refreshToken(): Result<Boolean> {
+    suspend fun refreshToken(): Result<Boolean> {
         return try {
             val refreshToken = tokenDataStore.refreshToken.firstOrNull()
                 ?: return Result.Error(Exception("No refresh token found"))

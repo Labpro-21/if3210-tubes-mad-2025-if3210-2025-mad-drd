@@ -2,6 +2,7 @@ package com.example.purrytify.di
 
 import com.example.purrytify.data.remote.api.AuthApi
 import com.example.purrytify.data.remote.api.ProfileApi
+import com.example.purrytify.data.remote.api.TopSongsApi
 import com.example.purrytify.data.remote.interceptor.AuthInterceptor
 import dagger.Module
 import dagger.Provides
@@ -66,5 +67,11 @@ object NetworkModule {
     @Singleton
     fun provideProfileApi(retrofit: Retrofit): ProfileApi {
         return retrofit.create(ProfileApi::class.java)
+    }
+    
+    @Provides
+    @Singleton
+    fun provideTopSongsApi(retrofit: Retrofit): TopSongsApi {
+        return retrofit.create(TopSongsApi::class.java)
     }
 }

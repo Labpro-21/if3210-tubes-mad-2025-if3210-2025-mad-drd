@@ -9,12 +9,14 @@ object CountryUtils {
      * Data class representing a country
      */
     data class Country(
-        val code: String,  // ISO 3166-1 alpha-2 country code
-        val name: String   // Country name in English
+        val code: String,        // ISO 3166-1 alpha-2 country code
+        val name: String,        // Country name in English
+        val hasTopSongs: Boolean = false  // Whether top songs are available for this country
     )
     
     /**
      * Complete list of countries with their ISO 3166-1 alpha-2 codes
+     * and flag indicating if they have top songs available
      */
     val COUNTRIES = listOf(
         Country("AF", "Afghanistan"),
@@ -48,7 +50,7 @@ object CountryUtils {
         Country("BA", "Bosnia and Herzegovina"),
         Country("BW", "Botswana"),
         Country("BV", "Bouvet Island"),
-        Country("BR", "Brazil"),
+        Country("BR", "Brazil", true),
         Country("IO", "British Indian Ocean Territory"),
         Country("BN", "Brunei Darussalam"),
         Country("BG", "Bulgaria"),
@@ -61,6 +63,7 @@ object CountryUtils {
         Country("KY", "Cayman Islands"),
         Country("CF", "Central African Republic"),
         Country("TD", "Chad"),
+        Country("CH", "Switzerland", true),
         Country("CL", "Chile"),
         Country("CN", "China"),
         Country("CX", "Christmas Island"),
@@ -77,7 +80,7 @@ object CountryUtils {
         Country("CW", "Curaçao"),
         Country("CY", "Cyprus"),
         Country("CZ", "Czechia"),
-        Country("DK", "Denmark"),
+        Country("DE", "Germany", true),
         Country("DJ", "Djibouti"),
         Country("DM", "Dominica"),
         Country("DO", "Dominican Republic"),
@@ -100,9 +103,9 @@ object CountryUtils {
         Country("GA", "Gabon"),
         Country("GM", "Gambia"),
         Country("GE", "Georgia"),
-        Country("DE", "Germany"),
         Country("GH", "Ghana"),
         Country("GI", "Gibraltar"),
+        Country("GB", "United Kingdom", true),
         Country("GR", "Greece"),
         Country("GL", "Greenland"),
         Country("GD", "Grenada"),
@@ -121,7 +124,7 @@ object CountryUtils {
         Country("HU", "Hungary"),
         Country("IS", "Iceland"),
         Country("IN", "India"),
-        Country("ID", "Indonesia"),
+        Country("ID", "Indonesia", true),
         Country("IR", "Iran"),
         Country("IQ", "Iraq"),
         Country("IE", "Ireland"),
@@ -151,7 +154,7 @@ object CountryUtils {
         Country("MO", "Macao"),
         Country("MG", "Madagascar"),
         Country("MW", "Malawi"),
-        Country("MY", "Malaysia"),
+        Country("MY", "Malaysia", true),
         Country("MV", "Maldives"),
         Country("ML", "Mali"),
         Country("MT", "Malta"),
@@ -232,7 +235,6 @@ object CountryUtils {
         Country("SR", "Suriname"),
         Country("SJ", "Svalbard and Jan Mayen"),
         Country("SE", "Sweden"),
-        Country("CH", "Switzerland"),
         Country("SY", "Syrian Arab Republic"),
         Country("TW", "Taiwan"),
         Country("TJ", "Tajikistan"),
@@ -251,8 +253,7 @@ object CountryUtils {
         Country("UG", "Uganda"),
         Country("UA", "Ukraine"),
         Country("AE", "United Arab Emirates"),
-        Country("GB", "United Kingdom"),
-        Country("US", "United States"),
+        Country("US", "United States", true),
         Country("UM", "United States Minor Outlying Islands"),
         Country("UY", "Uruguay"),
         Country("UZ", "Uzbekistan"),
@@ -284,6 +285,23 @@ object CountryUtils {
      */
     fun getCountryFromCode(code: String): Country? {
         return COUNTRIES.find { it.code == code }
+    }
+    
+    /**
+     * Check if a country has top songs available
+     * @param countryCode ISO 3166-1 alpha-2 country code
+     * @return true if the country has top songs available, false otherwise
+     */
+    fun isTopSongsAvailableForCountry(countryCode: String): Boolean {
+        return COUNTRIES.find { it.code == countryCode }?.hasTopSongs ?: false
+    }
+    
+    /**
+     * Get a list of countries that have top songs available
+     * @return List of countries with top songs available
+     */
+    fun getAvailableTopSongsCountries(): List<Country> {
+        return COUNTRIES.filter { it.hasTopSongs }
     }
     
     /**

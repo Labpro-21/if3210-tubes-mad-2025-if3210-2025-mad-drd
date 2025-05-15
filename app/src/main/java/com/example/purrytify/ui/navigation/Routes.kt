@@ -13,7 +13,11 @@ object Routes {
     const val PROFILE = "profile"
     
     // Audio player routes
-    const val PLAYER = "player"
+    const val PLAYER = "player/{songId}"
+    
+    // Top Songs routes
+    const val TOP_SONGS_GLOBAL = "topsongs/global"
+    const val TOP_SONGS_COUNTRY = "topsongs/country"
     
     // Other routes
     const val ADD_SONG = "add_song"

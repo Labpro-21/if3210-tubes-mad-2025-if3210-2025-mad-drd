@@ -1,5 +1,7 @@
 package com.example.purrytify.domain.model
 
+import android.net.Uri
+import com.example.purrytify.R
 import java.time.LocalDateTime
 
 /**
@@ -20,4 +22,15 @@ data class Song(
     val originalId: String? = null, // Original online ID if downloaded, null for user-created
     val createdAt: LocalDateTime,
     val updatedAt: LocalDateTime
-)
+) {
+    /**
+     * Get the artwork URI for display in UI
+     */
+    val artworkUri: Any
+        get() = if (artworkPath.isNotEmpty()) {
+            Uri.parse("file://$artworkPath")
+        } else {
+            // Default artwork resource ID
+            R.drawable.ic_launcher_foreground
+        }
+}

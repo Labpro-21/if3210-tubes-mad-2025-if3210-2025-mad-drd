@@ -204,6 +204,96 @@ class SongRepository @Inject constructor(
     }
     
     /**
+     * Check if a specific online song is already downloaded
+     * @param onlineId The ID of the online song
+     * @param userId The user ID
+     * @return True if the song is already downloaded, false otherwise
+     */
+    suspend fun isOnlineSongDownloaded(onlineId: String, userId: Int): Boolean = withContext(Dispatchers.IO) {
+        try {
+            songDao.isOnlineSongDownloaded(onlineId, userId)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error checking if song is downloaded: ${e.message}", e)
+            false
+        }
+    }
+    
+    /**
+     * Check if all online songs in a list are already downloaded
+     * @param onlineIds List of online song IDs to check
+     * @param userId The user ID
+     * @return True if all songs are downloaded, false otherwise
+     */
+    suspend fun areAllOnlineSongsDownloaded(onlineIds: List<String>, userId: Int): Boolean = withContext(Dispatchers.IO) {
+        try {
+            // If the list is empty, consider them all downloaded
+            if (onlineIds.isEmpty()) return@withContext true
+            
+            // Check each ID
+            onlineIds.all { isOnlineSongDownloaded(it, userId) }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error checking if all songs are downloaded: ${e.message}", e)
+            false
+        }
+    }
+    
+    /**
+     * Add a song downloaded from online
+     * @param userId User ID
+     * @param title Song title
+     * @param artist Song artist
+     * @param audioFile Audio file
+     * @param artworkFile Artwork file
+     * @param duration Song duration in milliseconds
+     * @param originalId Original online ID
+     * @return Result containing the saved song
+     */
+    suspend fun addDownloadedSong(
+        userId: Int,
+        title: String,
+        artist: String,
+        audioFile: String,
+        artworkFile: String,
+        duration: Long,
+        originalId: String
+    ): Result<Song> = withContext(Dispatchers.IO) {
+        try {
+            // Generate a unique ID for the song
+            val songId = UUID.randomUUID().toString()
+            val now = LocalDateTime.now()
+            
+            // Check if song is already downloaded
+            if (isOnlineSongDownloaded(originalId, userId)) {
+                return@withContext Result.Error(Exception("Song already downloaded"))
+            }
+            
+            // Create a song entity
+            val songEntity = SongEntity(
+                id = songId,
+                title = title,
+                artist = artist,
+                artworkPath = artworkFile,
+                filePath = audioFile,
+                duration = duration,
+                userId = userId,
+                downloadedAt = now,
+                originalId = originalId,
+                createdAt = now,
+                updatedAt = now
+            )
+            
+            // Insert the song into the database
+            songDao.insertSong(songEntity)
+            
+            // Return the domain model
+            Result.Success(songEntity.toDomain())
+        } catch (e: Exception) {
+            Log.e(TAG, "Error adding downloaded song: ${e.message}", e)
+            Result.Error(e, "Failed to add downloaded song: ${e.localizedMessage}")
+        }
+    }
+    
+    /**
      * Extension function to convert SongEntity to Song domain model
      */
     private fun SongEntity.toDomain(): Song {

@@ -11,6 +11,7 @@ import com.example.purrytify.ui.screens.auth.LoginScreen
 import com.example.purrytify.ui.screens.home.HomeScreen
 import com.example.purrytify.ui.screens.library.LibraryScreen
 import com.example.purrytify.ui.screens.profile.ProfileScreen
+import com.example.purrytify.ui.screens.topsongs.TopSongsScreen
 
 @Composable
 fun PurrytifyNavHost(
@@ -40,7 +41,13 @@ fun PurrytifyNavHost(
         composable(Routes.HOME) {
             HomeScreen(
                 onNavigateToPlayer = { songId ->
-                    navController.navigate("${Routes.PLAYER}/$songId")
+                    navController.navigate(Routes.PLAYER.replace("{songId}", songId))
+                },
+                onNavigateToTopSongs = { type ->
+                    when (type) {
+                        "global" -> navController.navigate(Routes.TOP_SONGS_GLOBAL)
+                        "country" -> navController.navigate(Routes.TOP_SONGS_COUNTRY)
+                    }
                 }
             )
         }
@@ -49,7 +56,7 @@ fun PurrytifyNavHost(
         composable(Routes.LIBRARY) {
             LibraryScreen(
                 onNavigateToPlayer = { songId ->
-                    navController.navigate("${Routes.PLAYER}/$songId")
+                    navController.navigate(Routes.PLAYER.replace("{songId}", songId))
                 }
             )
         }
@@ -68,12 +75,28 @@ fun PurrytifyNavHost(
         
         // Player Screen
         composable(
-            route = "${Routes.PLAYER}/{songId}",
+            route = Routes.PLAYER,
             arguments = listOf(navArgument("songId") { type = NavType.StringType })
         ) { backStackEntry ->
             val songId = backStackEntry.arguments?.getString("songId") ?: ""
             // PlayerScreen(songId = songId, onBackPressed = { navController.popBackStack() })
             // Implement when we get to the Player feature
+        }
+        
+        // Top Songs Global Screen
+        composable(Routes.TOP_SONGS_GLOBAL) {
+            TopSongsScreen(
+                isGlobal = true,
+                onBack = { navController.popBackStack() }
+            )
+        }
+        
+        // Top Songs Country Screen
+        composable(Routes.TOP_SONGS_COUNTRY) {
+            TopSongsScreen(
+                isGlobal = false,
+                onBack = { navController.popBackStack() }
+            )
         }
         
         // Add more routes for other screens as they're implemented

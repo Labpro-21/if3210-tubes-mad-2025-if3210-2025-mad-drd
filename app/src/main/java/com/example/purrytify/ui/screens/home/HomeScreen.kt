@@ -94,7 +94,8 @@ fun HomeScreen(
                             ChartCard(
                                 title = "Top 50",
                                 subtitle = "GLOBAL",
-                                backgroundResId = R.drawable.bg_top_global,
+                                isGlobal = true,
+                                isAvailable = true,
                                 onClick = { onNavigateToTopSongs("global") }
                             )
                         }
@@ -104,7 +105,7 @@ fun HomeScreen(
                             ChartCard(
                                 title = "Top 10",
                                 subtitle = countryName.uppercase(),
-                                backgroundResId = R.drawable.bg_top_local,
+                                isGlobal = false,
                                 isAvailable = isCountrySongsAvailable,
                                 onClick = { onNavigateToTopSongs("country") }
                             )
@@ -201,38 +202,32 @@ fun HomeScreen(
 fun ChartCard(
     title: String,
     subtitle: String,
-    backgroundResId: Int,
+    isGlobal: Boolean,
     isAvailable: Boolean = true,
     onClick: () -> Unit
 ) {
+    // Define gradient colors based on card type
+    val gradientColors = if (isGlobal) {
+        // Global top 50 gradient: #1f7973 to #071220
+        listOf(
+            Color(0xFF1F7973),  // Top color: #1f7973
+            Color(0xFF071220)   // Bottom color: #071220
+        )
+    } else {
+        // Country top 10 gradient: #d95360 to #51090f
+        listOf(
+            Color(0xFFD95360),  // Top color: #d95360
+            Color(0xFF51090F)   // Bottom color: #51090f
+        )
+    }
+    
     Box(
         modifier = Modifier
             .size(140.dp) // Square size
             .clip(RoundedCornerShape(8.dp))
+            .background(brush = Brush.verticalGradient(gradientColors))
             .clickable(enabled = isAvailable) { onClick() }
     ) {
-        // Background image
-        Image(
-            painter = painterResource(id = backgroundResId),
-            contentDescription = null,
-            modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.Crop
-        )
-        
-        // Gradient overlay
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    brush = Brush.verticalGradient(
-                        colors = listOf(
-                            Color.Transparent,
-                            Color.Black.copy(alpha = 0.7f)
-                        )
-                    )
-                )
-        )
-        
         // "Not Available" overlay if country songs aren't available
         if (!isAvailable) {
             Box(
@@ -250,7 +245,7 @@ fun ChartCard(
             }
         }
         
-        // Text content
+        // Text content - always at the bottom
         Column(
             modifier = Modifier
                 .fillMaxSize()

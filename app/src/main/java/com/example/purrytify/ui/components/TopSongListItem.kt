@@ -11,11 +11,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import com.example.purrytify.R
 import com.example.purrytify.domain.model.OnlineSong
 import com.example.purrytify.ui.theme.PurrytifyGreen
 import com.example.purrytify.ui.theme.PurrytifyLightGray
@@ -66,11 +68,7 @@ fun TopSongListItem(
                 contentDescription = "${song.title} by ${song.artist}",
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize(),
-//                error = Box(
-//                    modifier = Modifier
-//                        .fillMaxSize()
-//                        .background(PurrytifyLighterBlack)
-//                )
+                error = painterResource(id = R.drawable.ic_launcher_foreground)
             )
         }
         
@@ -98,13 +96,5 @@ fun TopSongListItem(
                 overflow = TextOverflow.Ellipsis
             )
         }
-        
-        // Duration (keeping this for online songs as it's provided by the API)
-        Text(
-            text = song.duration,
-            style = Typography.bodySmall,
-            color = PurrytifyLightGray,
-            modifier = Modifier.padding(start = 8.dp)
-        )
     }
 }

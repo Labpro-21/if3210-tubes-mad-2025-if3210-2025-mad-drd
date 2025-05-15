@@ -1,6 +1,7 @@
 package com.example.purrytify.ui.screens.topsongs
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -8,9 +9,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CloudDone
 import androidx.compose.material.icons.filled.CloudDownload
-import androidx.compose.material.icons.filled.Download
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -18,6 +18,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.zIndex
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.purrytify.ui.components.LoadingView
 import com.example.purrytify.ui.components.NoInternetScreen
@@ -57,6 +60,26 @@ fun TopSongsScreen(
     val title = if (isGlobal) "Top 50 Global" else "Top 10 ${CountryUtils.getCountryNameFromCode(userCountry)}"
     val screenType = if (isGlobal) "Global" else CountryUtils.getCountryNameFromCode(userCountry) ?: userCountry
     
+    // If download is in progress, show a full-screen modal overlay
+    if (downloadingState is DownloadState.InProgress) {
+        val progress = (downloadingState as DownloadState.InProgress)
+        
+        // Display a non-dismissible dialog
+        Dialog(
+            onDismissRequest = { /* Cannot dismiss */ },
+            properties = DialogProperties(
+                dismissOnBackPress = false,
+                dismissOnClickOutside = false,
+                usePlatformDefaultWidth = false
+            )
+        ) {
+            DownloadProgressOverlay(
+                current = progress.progress,
+                total = progress.total
+            )
+        }
+    }
+    
     Scaffold(
         topBar = {
             TopAppBar(
@@ -79,8 +102,9 @@ fun TopSongsScreen(
                 actions = {
                     // Download All action - only show if we have songs and not in loading state
                     if (uiState is TopSongsUiState.Success) {
+                        // Show appropriate icon based on download state
                         when (downloadingState) {
-                            // Show download complete icon if all songs downloaded
+                            // Show cloud-done icon if all songs downloaded
                             is DownloadState.Success, 
                             is DownloadState.Idle -> {
                                 IconButton(
@@ -92,7 +116,7 @@ fun TopSongsScreen(
                                 ) {
                                     if (areAllSongsDownloaded) {
                                         Icon(
-                                            imageVector = Icons.Default.Check,
+                                            imageVector = Icons.Default.CloudDone,
                                             contentDescription = "All songs downloaded",
                                             tint = PurrytifyGreen
                                         )
@@ -104,15 +128,7 @@ fun TopSongsScreen(
                                     }
                                 }
                             }
-                            // Show progress indicator if downloading
-                            is DownloadState.InProgress -> {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(24.dp),
-                                    color = PurrytifyWhite,
-                                    strokeWidth = 2.dp
-                                )
-                            }
-                            else -> { /* Don't show anything for error state */ }
+                            else -> { /* Don't show anything for error or progress state */ }
                         }
                     }
                 }
@@ -167,15 +183,6 @@ fun TopSongsScreen(
                         showDownloadDialog = false
                     },
                     onDismiss = { showDownloadDialog = false }
-                )
-            }
-            
-            // Show download progress if downloading
-            if (downloadingState is DownloadState.InProgress) {
-                val progress = (downloadingState as DownloadState.InProgress)
-                DownloadProgressOverlay(
-                    current = progress.progress,
-                    total = progress.total
                 )
             }
         }
@@ -405,7 +412,9 @@ fun DownloadProgressOverlay(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(PurrytifyBlack.copy(alpha = 0.8f)),
+            .background(PurrytifyBlack.copy(alpha = 0.9f))
+            .clickable(enabled = false) { /* Prevent clicks passing through */ }
+            .zIndex(10f),
         contentAlignment = Alignment.Center
     ) {
         Card(

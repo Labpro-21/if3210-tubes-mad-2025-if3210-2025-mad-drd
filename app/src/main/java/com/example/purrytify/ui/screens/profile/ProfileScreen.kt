@@ -9,6 +9,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -29,6 +30,7 @@ import com.example.purrytify.ui.components.LoadingView
 import com.example.purrytify.ui.components.LogoutModalBottomSheet
 import com.example.purrytify.ui.components.NoInternetScreen
 import com.example.purrytify.ui.theme.*
+import com.example.purrytify.util.CountryUtils
 import java.io.File
 import java.io.FileOutputStream
 
@@ -125,6 +127,11 @@ fun ProfileScreen(
             is ProfileUiState.Success -> {
                 val profile = state.profile
                 
+                // Get country information
+                val countryCode = profile.location
+                val countryName = CountryUtils.getCountryNameFromCode(countryCode) ?: countryCode
+                val flagEmoji = CountryUtils.getFlagEmoji(countryCode)
+                
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
@@ -165,14 +172,39 @@ fun ProfileScreen(
                     
                     Spacer(modifier = Modifier.height(4.dp))
                     
-                    // Location
-                    Text(
-                        text = profile.location,
-                        style = Typography.bodyMedium,
-                        color = PurrytifyLightGray
-                    )
+                    // Location with flag and country name
+                    Card(
+                        modifier = Modifier
+                            .padding(top = 8.dp, bottom = 16.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = PurrytifyLighterBlack
+                        ),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            // Flag emoji
+                            Text(
+                                text = flagEmoji,
+                                style = Typography.titleMedium
+                            )
+                            
+                            Spacer(modifier = Modifier.width(8.dp))
+                            
+                            // Country name and code
+                            Text(
+                                text = "$countryName ($countryCode)",
+                                style = Typography.bodyMedium,
+                                color = PurrytifyWhite
+                            )
+                        }
+                    }
                     
-                    Spacer(modifier = Modifier.height(24.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
                     
                     // Edit and Logout buttons
                     Row(

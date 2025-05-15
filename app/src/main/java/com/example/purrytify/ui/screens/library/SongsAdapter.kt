@@ -94,13 +94,11 @@ class SongsAdapter(
                 artworkImageView.setImageResource(R.drawable.default_artwork)
             }
             
-            // Highlight if currently playing
+            // Set text color for currently playing song without changing the background
             if (isPlaying) {
                 titleTextView.setTextColor(ContextCompat.getColor(itemView.context, R.color.purrytify_green))
-                itemContainer.setBackgroundResource(R.drawable.bg_song_item_playing)
             } else {
                 titleTextView.setTextColor(ContextCompat.getColor(itemView.context, R.color.white))
-                itemContainer.setBackgroundResource(R.drawable.bg_song_item)
             }
             
             // Set click listener

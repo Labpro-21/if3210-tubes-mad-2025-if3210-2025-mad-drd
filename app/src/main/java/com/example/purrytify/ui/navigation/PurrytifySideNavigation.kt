@@ -63,7 +63,18 @@ fun PurrytifySideNavigation(
         verticalArrangement = Arrangement.spacedBy(24.dp, Alignment.CenterVertically)
     ) {
         navItems.forEach { item ->
-            val selected = currentRoute == item.route
+            // Check if current route is home or top songs-related
+            val selected = when {
+                // If the current route is home or top songs related, highlight home
+                item.route == Routes.HOME && (
+                    currentRoute == Routes.HOME || 
+                    currentRoute == Routes.TOP_SONGS_GLOBAL || 
+                    currentRoute == Routes.TOP_SONGS_COUNTRY
+                ) -> true
+                // Otherwise do exact matching
+                currentRoute == item.route -> true
+                else -> false
+            }
             
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally

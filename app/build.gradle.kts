@@ -116,6 +116,9 @@ dependencies {
     // ZXing
     implementation(libs.zxing.core)
 
+    // OSMDroid
+    implementation("org.osmdroid:osmdroid-android:6.1.17")
+
     // Testing
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

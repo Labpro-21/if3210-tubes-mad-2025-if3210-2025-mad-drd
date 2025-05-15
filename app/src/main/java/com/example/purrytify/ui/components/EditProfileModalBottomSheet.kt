@@ -1,15 +1,7 @@
 package com.example.purrytify.ui.components
 
 import android.Manifest
-import android.app.Activity
 import android.content.Context
-import android.content.Intent
-import android.content.pm.PackageManager
-import android.location.Location
-import android.net.Uri
-import android.os.Handler
-import android.os.Looper
-import android.provider.MediaStore
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -27,7 +19,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -35,7 +27,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
@@ -53,8 +44,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
 import com.example.purrytify.domain.model.Profile
 import com.example.purrytify.ui.theme.PurritifyRed
 import com.example.purrytify.ui.theme.PurrytifyBlack
@@ -64,6 +53,7 @@ import com.example.purrytify.ui.theme.PurrytifyLightGray
 import com.example.purrytify.ui.theme.PurrytifyLighterBlack
 import com.example.purrytify.ui.theme.PurrytifyWhite
 import com.example.purrytify.ui.theme.Typography
+import com.example.purrytify.util.CountryUtils
 import com.example.purrytify.util.LocationUtils
 import kotlinx.coroutines.launch
 
@@ -80,6 +70,7 @@ fun EditProfileModalBottomSheet(
     if (isVisible) {
         val context = LocalContext.current
         var location by remember { mutableStateOf(profile.location) }
+        var showMapPicker by remember { mutableStateOf(false) }
         
         val sheetState = rememberModalBottomSheetState(
             skipPartiallyExpanded = true
@@ -96,20 +87,10 @@ fun EditProfileModalBottomSheet(
                 LocationUtils.getLastKnownLocation(context)?.let { userLocation ->
                     val countryCode = LocationUtils.getCountryCodeFromLocation(context, userLocation)
                     location = countryCode
-                }
-            }
-        }
-        
-        // Maps intent launcher
-        val mapPickerLauncher = rememberLauncherForActivityResult(
-            contract = ActivityResultContracts.StartActivityForResult()
-        ) { result ->
-            if (result.resultCode == Activity.RESULT_OK) {
-                result.data?.let { data ->
-                    data.getStringExtra("selected_location")?.let { selectedLocation ->
-                        location = selectedLocation
-                    }
-                }
+                    showToast(context, "Location set to: $countryCode")
+                } ?: showToast(context, "Could not determine your location")
+            } else {
+                showToast(context, "Location permission denied")
             }
         }
         
@@ -130,50 +111,8 @@ fun EditProfileModalBottomSheet(
                 LocationUtils.getLastKnownLocation(context)?.let { userLocation ->
                     val countryCode = LocationUtils.getCountryCodeFromLocation(context, userLocation)
                     location = countryCode
-                }
-            }
-        }
-        
-        fun openMapPicker() {
-            try {
-                // Create an Intent to view the map
-                val gmmIntentUri = Uri.parse("geo:0,0?q=")
-                val mapIntent = Intent(Intent.ACTION_VIEW, gmmIntentUri)
-                
-                // Specify that we want to use Google Maps
-                mapIntent.setPackage("com.google.android.apps.maps")
-                
-                if (mapIntent.resolveActivity(context.packageManager) != null) {
-                    // Google Maps is installed
-                    Toast.makeText(
-                        context,
-                        "Please select a location and use the back button",
-                        Toast.LENGTH_SHORT
-                    ).show()
-                    mapPickerLauncher.launch(mapIntent)
-                    
-                    // When user returns, we'll just use the last known location as the country code
-                    // will be determined from the location the user navigated to in Maps
-                    Handler(Looper.getMainLooper()).postDelayed({
-                        LocationUtils.getLastKnownLocation(context)?.let { userLocation ->
-                            val countryCode = LocationUtils.getCountryCodeFromLocation(context, userLocation)
-                            location = countryCode
-                        }
-                    }, 500) // Small delay to ensure the location is updated
-                } else {
-                    // Google Maps not installed
-                    Toast.makeText(
-                        context, 
-                        "Google Maps is not installed",
-                        Toast.LENGTH_SHORT
-                    ).show()
-                }
-            } catch (e: Exception) {
-                Toast.makeText(
-                    context,
-                    "Error opening maps: ${e.message}",
-                    Toast.LENGTH_SHORT
-                ).show()
+                    showToast(context, "Location set to: $countryCode")
+                } ?: showToast(context, "Could not determine your location")
             }
         }
         
@@ -295,7 +234,7 @@ fun EditProfileModalBottomSheet(
 
                 // Location field
                 Text(
-                    text = "Location (Country Code)",
+                    text = "Location",
                     style = Typography.bodyMedium,
                     color = PurrytifyWhite,
                     modifier = Modifier
@@ -305,8 +244,10 @@ fun EditProfileModalBottomSheet(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
+                // Display the country name (or country code if can't find matching name)
+                val countryName = CountryUtils.getCountryNameFromCode(location)
                 OutlinedTextField(
-                    value = location,
+                    value = if (countryName != null) "$location - $countryName" else location,
                     onValueChange = { /* Read-only */ },
                     modifier = Modifier.fillMaxWidth(),
                     colors = OutlinedTextFieldDefaults.colors(
@@ -318,6 +259,12 @@ fun EditProfileModalBottomSheet(
                         focusedTextColor = PurrytifyLightGray,
                         cursorColor = PurrytifyWhite
                     ),
+                    leadingIcon = {
+                        Text(
+                            text = CountryUtils.getFlagEmoji(location),
+                            style = Typography.titleMedium
+                        )
+                    },
                     shape = RoundedCornerShape(8.dp),
                     singleLine = true,
                     readOnly = true // Make it read-only
@@ -367,9 +314,9 @@ fun EditProfileModalBottomSheet(
                         )
                     }
                     
-                    // Pick from map button
+                    // Open map picker button
                     Button(
-                        onClick = { openMapPicker() },
+                        onClick = { showMapPicker = true },
                         modifier = Modifier
                             .weight(1f)
                             .height(48.dp),
@@ -380,8 +327,8 @@ fun EditProfileModalBottomSheet(
                         )
                     ) {
                         Icon(
-                            imageVector = Icons.Default.LocationOn,
-                            contentDescription = "Choose location on map",
+                            imageVector = Icons.Default.Map,
+                            contentDescription = "Select on map",
                             tint = PurrytifyWhite
                         )
                         
@@ -461,5 +408,23 @@ fun EditProfileModalBottomSheet(
                 Spacer(modifier = Modifier.height(32.dp))
             }
         }
+        
+        // Show map picker dialog if requested
+        if (showMapPicker) {
+            MapPickerDialog(
+                isVisible = true,
+                onDismiss = { showMapPicker = false },
+                onLocationSelected = { countryCode ->
+                    location = countryCode
+                    showMapPicker = false
+                    showToast(context, "Location set to: $countryCode")
+                }
+            )
+        }
     }
+}
+
+// Helper function to show toasts
+private fun showToast(context: Context, message: String) {
+    Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
 }

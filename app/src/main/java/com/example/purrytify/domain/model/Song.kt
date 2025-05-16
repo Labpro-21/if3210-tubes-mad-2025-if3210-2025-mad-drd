@@ -30,7 +30,6 @@ data class Song(
         get() = if (artworkPath.isNotEmpty()) {
             Uri.parse("file://$artworkPath")
         } else {
-            // Default artwork resource ID
-            R.drawable.ic_launcher_foreground
+            R.drawable.default_artwork
         }
 }

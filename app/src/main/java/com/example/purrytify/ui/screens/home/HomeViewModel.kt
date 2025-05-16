@@ -46,7 +46,7 @@ class HomeViewModel @Inject constructor(
     val currentPlayingSong = _currentPlayingSong.asStateFlow()
 
     // User country
-    private val _userCountry = MutableStateFlow("ID") // Default to Indonesia
+    private val _userCountry = MutableStateFlow("") // Default to empty string
     val userCountry = _userCountry.asStateFlow()
     
     // Whether user's country has top songs available
@@ -60,7 +60,7 @@ class HomeViewModel @Inject constructor(
         // Load user country
         viewModelScope.launch {
             userPreferences.userLocation.collect { location ->
-                _userCountry.value = location ?: "ID" // Default to Indonesia
+                _userCountry.value = location ?: "" // Default to empty string
                 _isCountrySongsAvailable.value = CountryUtils.isTopSongsAvailableForCountry(_userCountry.value)
             }
         }

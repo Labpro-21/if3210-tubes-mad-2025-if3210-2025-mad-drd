@@ -346,9 +346,9 @@ private fun getCountryFromLocation(context: Context, geoPoint: GeoPoint, callbac
             // API 33+ async method
             geocoder.getFromLocation(geoPoint.latitude, geoPoint.longitude, 1) { addresses ->
                 val countryCode = if (addresses.isNotEmpty()) {
-                    addresses[0].countryCode ?: "ID" // Default to Indonesia
+                    addresses[0].countryCode ?: "" // Default to empty string
                 } else {
-                    "ID" // Default to Indonesia
+                    "" // Default to empty string
                 }
                 callback(countryCode)
             }
@@ -357,14 +357,14 @@ private fun getCountryFromLocation(context: Context, geoPoint: GeoPoint, callbac
             @Suppress("DEPRECATION")
             val addresses = geocoder.getFromLocation(geoPoint.latitude, geoPoint.longitude, 1)
             val countryCode = if (addresses != null && addresses.isNotEmpty()) {
-                addresses[0].countryCode ?: "ID" // Default to Indonesia
+                addresses[0].countryCode ?: "" // Default to empty string
             } else {
-                "ID" // Default to Indonesia
+                "" // Default to empty string
             }
             callback(countryCode)
         }
     } catch (e: Exception) {
         Log.e("MapPicker", "Error getting country: ${e.message}", e)
-        callback("ID") // Default to Indonesia on error
+        callback("") // Default to empty string on error
     }
 }

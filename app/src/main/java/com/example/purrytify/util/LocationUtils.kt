@@ -101,13 +101,13 @@ object LocationUtils {
             val addresses = geocoder.getFromLocation(location.latitude, location.longitude, 1)
             
             if (addresses != null && addresses.isNotEmpty()) {
-                addresses[0].countryCode ?: "ID" // Default to Indonesia if null
+                addresses[0].countryCode ?: "" // Default to Indonesia if null
             } else {
-                "ID" // Default to Indonesia
+                "" // Default to Indonesia
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error getting country code: ${e.message}", e)
-            "ID" // Default to Indonesia on error
+            "" // Default to Indonesia on error
         }
     }
 }

@@ -9,7 +9,7 @@ data class User(
     val id: Int,
     val username: String,
     val email: String,
-    val profilePhoto: String = "dummy.png",
+    val profilePhoto: String = "",
     val location: String = "ID", // Default to Indonesia
     val createdAt: LocalDateTime,
     val updatedAt: LocalDateTime

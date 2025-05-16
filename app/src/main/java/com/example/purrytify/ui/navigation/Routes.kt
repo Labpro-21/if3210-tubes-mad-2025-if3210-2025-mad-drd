@@ -19,6 +19,9 @@ object Routes {
     const val TOP_SONGS_GLOBAL = "topsongs/global"
     const val TOP_SONGS_COUNTRY = "topsongs/country"
     
+    // Playlist routes
+    const val DAILY_PLAYLIST = "playlist/daily"
+    
     // Other routes
     const val ADD_SONG = "add_song"
     const val EDIT_SONG = "edit_song/{songId}"

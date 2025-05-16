@@ -110,6 +110,17 @@ fun HomeScreen(
                                 onClick = { onNavigateToTopSongs("country") }
                             )
                         }
+                        
+                        // Daily Playlist Card
+                        item {
+                            ChartCard(
+                                title = "Daily",
+                                subtitle = "PLAYLIST",
+                                isDailyPlaylist = true,
+                                isAvailable = true,
+                                onClick = { onNavigateToTopSongs("daily") }
+                            )
+                        }
                     }
                     
                     Spacer(modifier = Modifier.height(32.dp))
@@ -198,27 +209,41 @@ fun HomeScreen(
 /**
  * Chart card component used in the Charts section
  */
+/**
+ * Chart card component used in the Charts section
+ */
 @Composable
 fun ChartCard(
     title: String,
     subtitle: String,
-    isGlobal: Boolean,
+    isGlobal: Boolean = false,
+    isDailyPlaylist: Boolean = false,
     isAvailable: Boolean = true,
     onClick: () -> Unit
 ) {
     // Define gradient colors based on card type
-    val gradientColors = if (isGlobal) {
-        // Global top 50 gradient: #1f7973 to #071220
-        listOf(
-            Color(0xFF1F7973),  // Top color: #1f7973
-            Color(0xFF071220)   // Bottom color: #071220
-        )
-    } else {
-        // Country top 10 gradient: #d95360 to #51090f
-        listOf(
-            Color(0xFFD95360),  // Top color: #d95360
-            Color(0xFF51090F)   // Bottom color: #51090f
-        )
+    val gradientColors = when {
+        isGlobal -> {
+            // Global top 50 gradient: #1f7973 to #071220
+            listOf(
+                Color(0xFF1F7973),  // Top color: #1f7973
+                Color(0xFF071220)   // Bottom color: #071220
+            )
+        }
+        isDailyPlaylist -> {
+            // Daily Playlist gradient: #5E35B1 to #140144
+            listOf(
+                Color(0xFF5E35B1),  // Top color: purple
+                Color(0xFF140144)   // Bottom color: deep purple
+            )
+        }
+        else -> {
+            // Country top 10 gradient: #d95360 to #51090f
+            listOf(
+                Color(0xFFD95360),  // Top color: #d95360
+                Color(0xFF51090F)   // Bottom color: #51090f
+            )
+        }
     }
     
     Box(

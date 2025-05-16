@@ -12,6 +12,7 @@ import com.example.purrytify.ui.screens.home.HomeScreen
 import com.example.purrytify.ui.screens.library.LibraryScreen
 import com.example.purrytify.ui.screens.profile.ProfileScreen
 import com.example.purrytify.ui.screens.topsongs.TopSongsScreen
+import com.example.purrytify.ui.screens.playlist.DailyPlaylistScreen
 
 @Composable
 fun PurrytifyNavHost(
@@ -47,6 +48,7 @@ fun PurrytifyNavHost(
                     when (type) {
                         "global" -> navController.navigate(Routes.TOP_SONGS_GLOBAL)
                         "country" -> navController.navigate(Routes.TOP_SONGS_COUNTRY)
+                        "daily" -> navController.navigate(Routes.DAILY_PLAYLIST)
                     }
                 }
             )
@@ -96,6 +98,16 @@ fun PurrytifyNavHost(
             TopSongsScreen(
                 isGlobal = false,
                 onBack = { navController.popBackStack() }
+            )
+        }
+        
+        // Daily Playlist Screen
+        composable(Routes.DAILY_PLAYLIST) {
+            DailyPlaylistScreen(
+                onBack = { navController.popBackStack() },
+                onNavigateToPlayer = { songId ->
+                    navController.navigate(Routes.PLAYER.replace("{songId}", songId))
+                }
             )
         }
         

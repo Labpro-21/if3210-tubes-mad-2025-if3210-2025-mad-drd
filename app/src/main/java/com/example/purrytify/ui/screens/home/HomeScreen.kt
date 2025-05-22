@@ -27,11 +27,15 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.purrytify.R
+import com.example.purrytify.domain.model.PlaylistItem
+import com.example.purrytify.domain.player.PlaybackContext
+import com.example.purrytify.domain.player.PlayerBridge
 import com.example.purrytify.ui.components.LoadingView
 import com.example.purrytify.ui.components.NewSongItem
 import com.example.purrytify.ui.components.SongListItem
 import com.example.purrytify.ui.theme.*
 import com.example.purrytify.util.CountryUtils
+import javax.inject.Inject
 
 /**
  * Home screen with Charts, New Songs, and Recently Played sections
@@ -153,7 +157,7 @@ fun HomeScreen(
                                     song = song,
                                     isPlaying = currentPlayingSong?.id == song.id,
                                     onClick = { 
-                                        viewModel.playSong(song)
+                                        viewModel.playFromNewSongs(song)
                                         onNavigateToPlayer(song.id)
                                     }
                                 )
@@ -190,7 +194,7 @@ fun HomeScreen(
                             song = song,
                             isPlaying = currentPlayingSong?.id == song.id,
                             onClick = { 
-                                viewModel.playSong(song)
+                                viewModel.playFromRecentlyPlayed(song)
                                 onNavigateToPlayer(song.id)
                             }
                         )
@@ -206,9 +210,6 @@ fun HomeScreen(
     }
 }
 
-/**
- * Chart card component used in the Charts section
- */
 /**
  * Chart card component used in the Charts section
  */

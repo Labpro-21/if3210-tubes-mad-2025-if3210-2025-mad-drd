@@ -10,6 +10,7 @@ import androidx.navigation.navArgument
 import com.example.purrytify.ui.screens.auth.LoginScreen
 import com.example.purrytify.ui.screens.home.HomeScreen
 import com.example.purrytify.ui.screens.library.LibraryScreen
+import com.example.purrytify.ui.screens.player.PlayerScreen
 import com.example.purrytify.ui.screens.profile.ProfileScreen
 import com.example.purrytify.ui.screens.topsongs.TopSongsScreen
 import com.example.purrytify.ui.screens.playlist.DailyPlaylistScreen
@@ -81,8 +82,10 @@ fun PurrytifyNavHost(
             arguments = listOf(navArgument("songId") { type = NavType.StringType })
         ) { backStackEntry ->
             val songId = backStackEntry.arguments?.getString("songId") ?: ""
-            // PlayerScreen(songId = songId, onBackPressed = { navController.popBackStack() })
-            // Implement when we get to the Player feature
+            PlayerScreen(
+                songId = songId, 
+                onBackPressed = { navController.popBackStack() }
+            )
         }
         
         // Top Songs Global Screen
@@ -110,7 +113,5 @@ fun PurrytifyNavHost(
                 }
             )
         }
-        
-        // Add more routes for other screens as they're implemented
     }
 }

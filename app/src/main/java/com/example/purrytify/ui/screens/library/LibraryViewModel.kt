@@ -6,7 +6,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.purrytify.data.local.datastore.UserPreferences
 import com.example.purrytify.data.repository.SongRepository
+import com.example.purrytify.domain.model.PlaylistItem
 import com.example.purrytify.domain.model.Song
+import com.example.purrytify.domain.player.PlaybackContext
+import com.example.purrytify.domain.player.PlayerBridge
 import com.example.purrytify.domain.util.Result
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -17,7 +20,8 @@ import javax.inject.Inject
 @HiltViewModel
 class LibraryViewModel @Inject constructor(
     private val songRepository: SongRepository,
-    private val userPreferences: UserPreferences
+    private val userPreferences: UserPreferences,
+    private val playerBridge: PlayerBridge
 ) : ViewModel() {
     
     private val TAG = "LibraryViewModel"
@@ -50,14 +54,6 @@ class LibraryViewModel @Inject constructor(
     private val _currentPlayingSong = MutableStateFlow<Song?>(null)
     val currentPlayingSong: StateFlow<Song?> = _currentPlayingSong
     
-    // Playback state
-    private val _isPlaying = MutableStateFlow(false)
-    val isPlaying: StateFlow<Boolean> = _isPlaying
-    
-    // Playback progress (0.0 to 1.0)
-    private val _progress = MutableStateFlow(0f)
-    val progress: StateFlow<Float> = _progress
-    
     // Current user ID
     private val _currentUserId = MutableStateFlow<Int?>(null)
     
@@ -71,6 +67,30 @@ class LibraryViewModel @Inject constructor(
                     refreshSongs()
                 } else {
                     _uiState.value = LibraryUiState.Error("User not found")
+                }
+            }
+        }
+        
+        // Monitor current playing item from player bridge
+        viewModelScope.launch {
+            playerBridge.currentItem.collect { currentItem ->
+                // Update current playing song if it's a local song
+                _currentPlayingSong.value = when (currentItem) {
+                    is PlaylistItem.LocalSong -> {
+                        Song(
+                            id = currentItem.id,
+                            title = currentItem.title,
+                            artist = currentItem.artist,
+                            artworkPath = currentItem.artworkPath,
+                            filePath = currentItem.filePath,
+                            duration = currentItem.durationMs,
+                            userId = 0, // Will be set by repository
+                            isLiked = currentItem.isLiked,
+                            createdAt = java.time.LocalDateTime.now(),
+                            updatedAt = java.time.LocalDateTime.now()
+                        )
+                    }
+                    else -> null
                 }
             }
         }
@@ -231,17 +251,45 @@ class LibraryViewModel @Inject constructor(
     }
     
     /**
-     * Play a song
+     * Play a song from the library
      */
     fun playSong(song: Song) {
-        Log.d(TAG, "Playing song: ${song.title}")
-        _currentPlayingSong.value = song
-        _isPlaying.value = true
+        Log.d(TAG, "Playing song from library: ${song.title}")
         
-        // Update the last played timestamp
+        // Get the current filtered songs list for the queue
+        val currentSongs = when (val state = _uiState.value) {
+            is LibraryUiState.Success -> state.songs
+            else -> listOf(song) // Fallback to single song
+        }
+        
+        // Create a queue from the current view (filtered songs)
+        val queue = currentSongs.map { PlaylistItem.fromLocalSong(it) }
+        val startIndex = queue.indexOfFirst { it.id == song.id }
+        
+        if (startIndex >= 0) {
+            val context = when (_activeTab.value) {
+                LibraryTab.ALL -> PlaybackContext.Library
+                LibraryTab.LIKED -> PlaybackContext.Library
+                LibraryTab.DOWNLOADED -> PlaybackContext.Library
+            }
+            playerBridge.playQueue(queue, startIndex, context)
+            
+            // Update the last played timestamp
+            updateLastPlayed(song)
+        }
+    }
+    
+    /**
+     * Update the song's last played timestamp
+     */
+    private fun updateLastPlayed(song: Song) {
         viewModelScope.launch {
-            val userId = _currentUserId.value ?: return@launch
-            songRepository.updateLastPlayed(song.id, userId)
+            try {
+                val userId = _currentUserId.value ?: return@launch
+                songRepository.updateLastPlayed(song.id, userId)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error updating last played: ${e.message}", e)
+            }
         }
     }
     

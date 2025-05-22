@@ -7,6 +7,9 @@ import com.example.purrytify.data.local.datastore.UserPreferences
 import com.example.purrytify.data.repository.SongRepository
 import com.example.purrytify.data.repository.TopSongsRepository
 import com.example.purrytify.domain.model.OnlineSong
+import com.example.purrytify.domain.model.PlaylistItem
+import com.example.purrytify.domain.player.PlaybackContext
+import com.example.purrytify.domain.player.PlayerBridge
 import com.example.purrytify.domain.util.Result
 import com.example.purrytify.util.CountryUtils
 import com.example.purrytify.util.NetworkManager
@@ -26,7 +29,8 @@ class TopSongsViewModel @Inject constructor(
     private val topSongsRepository: TopSongsRepository,
     private val songRepository: SongRepository,
     private val userPreferences: UserPreferences,
-    private val networkManager: NetworkManager
+    private val networkManager: NetworkManager,
+    private val playerBridge: PlayerBridge
 ) : ViewModel() {
 
     private val TAG = "TopSongsViewModel"
@@ -87,6 +91,30 @@ class TopSongsViewModel @Inject constructor(
                 val currentState = _uiState.value
                 if (currentState !is TopSongsUiState.Success && !isAvailable) {
                     _uiState.value = TopSongsUiState.NoInternet
+                }
+            }
+        }
+        
+        // Monitor current playing item from player bridge
+        viewModelScope.launch {
+            playerBridge.currentItem.collect { currentItem ->
+                // Update current playing song if it's an online song
+                _currentPlayingSong.value = when (currentItem) {
+                    is PlaylistItem.OnlineSong -> {
+                        OnlineSong(
+                            id = currentItem.originalId.toLong(),
+                            title = currentItem.title,
+                            artist = currentItem.artist,
+                            artworkUrl = currentItem.artworkUrl,
+                            songUrl = currentItem.songUrl,
+                            duration = currentItem.duration,
+                            country = "GLOBAL",
+                            rank = 0,
+                            createdAt = "",
+                            updatedAt = ""
+                        )
+                    }
+                    else -> null
                 }
             }
         }
@@ -185,10 +213,24 @@ class TopSongsViewModel @Inject constructor(
     }
 
     /**
-     * Play an online song
+     * Play an online song with full queue support
      */
     fun playSong(song: OnlineSong) {
-        _currentPlayingSong.value = song
+        Log.d(TAG, "Playing online song: ${song.title}")
+        
+        // Get the current songs list for the queue
+        val currentSongs = when (val state = _uiState.value) {
+            is TopSongsUiState.Success -> state.songs
+            else -> listOf(song) // Fallback to single song
+        }
+        
+        // Create a queue from the current view
+        val queue = currentSongs.map { PlaylistItem.fromOnlineSong(it) }
+        val startIndex = queue.indexOfFirst { it.originalId == song.id.toString() }
+        
+        if (startIndex >= 0) {
+            playerBridge.playQueue(queue, startIndex, PlaybackContext.TopSongs)
+        }
     }
 
     /**

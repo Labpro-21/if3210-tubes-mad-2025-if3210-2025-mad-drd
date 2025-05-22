@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.purrytify.data.local.datastore.UserPreferences
 import com.example.purrytify.data.repository.AuthRepository
 import com.example.purrytify.data.repository.ProfileRepository
+import com.example.purrytify.domain.player.PlayerBridge
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -22,7 +23,8 @@ import javax.inject.Inject
 class ProfileViewModel @Inject constructor(
     private val profileRepository: ProfileRepository,
     private val authRepository: AuthRepository,
-    private val userPreferences: UserPreferences
+    private val userPreferences: UserPreferences,
+    private val playerBridge: PlayerBridge
 ) : ViewModel() {
     
     private val TAG = "ProfileViewModel"
@@ -176,12 +178,18 @@ class ProfileViewModel @Inject constructor(
     }
     
     /**
-     * Logout the user
+     * Logout the user and stop any playing music
      */
     fun logout() {
         viewModelScope.launch {
             try {
+                // Stop any currently playing music
+                playerBridge.stop()
+                Log.d(TAG, "Stopped music playback on logout")
+                
+                // Perform logout
                 authRepository.logout()
+                Log.d(TAG, "User logged out successfully")
             } catch (e: Exception) {
                 Log.e(TAG, "Error during logout: ${e.message}", e)
             }

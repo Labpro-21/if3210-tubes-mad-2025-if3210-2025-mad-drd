@@ -13,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.navigation.compose.rememberNavController
 import com.example.purrytify.ui.navigation.PurrytifyAppScaffold
+import com.example.purrytify.ui.screens.player.PlayerViewModel
 import com.example.purrytify.ui.theme.PurrytifyBlack
 import com.example.purrytify.ui.theme.PurrytifyTheme
 import com.example.purrytify.util.NetworkManager
@@ -26,6 +27,7 @@ class MainActivity : ComponentActivity() {
     lateinit var networkManager: NetworkManager
 
     private val viewModel: MainViewModel by viewModels()
+    private val playerViewModel: PlayerViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         // Keep splash screen until we have determined the start destination
@@ -58,7 +60,8 @@ class MainActivity : ComponentActivity() {
                         PurrytifyAppScaffold(
                             navController = navController,
                             startDestination = destination,
-                            isNetworkAvailable = isNetworkAvailable
+                            isNetworkAvailable = isNetworkAvailable,
+                            playerViewModel = playerViewModel
                         )
                     }
                 }
@@ -71,5 +74,12 @@ class MainActivity : ComponentActivity() {
         
         // Refresh network state when activity resumes
         networkManager.refreshNetworkState()
+    }
+    
+    override fun onPause() {
+        super.onPause()
+        
+        // Note: We don't stop music playback on pause as it should continue in background
+        // The music will only stop when the user explicitly stops it or logs out
     }
 }

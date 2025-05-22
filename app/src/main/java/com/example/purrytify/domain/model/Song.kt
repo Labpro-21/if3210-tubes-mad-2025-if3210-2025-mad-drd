@@ -32,4 +32,15 @@ data class Song(
         } else {
             R.drawable.default_artwork
         }
+    
+    /**
+     * Get formatted duration string (mm:ss)
+     */
+    val formattedDuration: String
+        get() {
+            val totalSeconds = duration / 1000
+            val minutes = totalSeconds / 60
+            val seconds = totalSeconds % 60
+            return String.format("%d:%02d", minutes, seconds)
+        }
 }

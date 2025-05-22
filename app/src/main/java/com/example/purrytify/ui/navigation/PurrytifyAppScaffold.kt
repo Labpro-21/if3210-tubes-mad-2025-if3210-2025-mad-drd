@@ -2,6 +2,7 @@ package com.example.purrytify.ui.navigation
 
 import android.content.res.Configuration
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -10,12 +11,17 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
+import com.example.purrytify.ui.components.MiniPlayer
+import com.example.purrytify.ui.screens.player.PlayerViewModel
 
 /**
  * Main app scaffold that handles navigation and hosts the NavHost with responsive design
@@ -25,7 +31,8 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 fun PurrytifyAppScaffold(
     navController: NavHostController,
     startDestination: String,
-    isNetworkAvailable: Boolean
+    isNetworkAvailable: Boolean,
+    playerViewModel: PlayerViewModel = hiltViewModel()
 ) {
     // Get current route to determine if bottom nav should be shown
     val currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route
@@ -41,6 +48,19 @@ fun PurrytifyAppScaffold(
             else -> true
         }
     }
+    
+    // Determine if we should show the mini player
+    val shouldShowMiniPlayer = remember(currentRoute) {
+        when (currentRoute) {
+            Routes.LOGIN -> false
+            Routes.PLAYER -> false
+            else -> true
+        }
+    }
+    
+    // Check if there's currently playing music
+    val currentItem by playerViewModel.currentItem.collectAsState()
+    val showMiniPlayer = shouldShowMiniPlayer && currentItem != null
     
     if (isLandscape && shouldShowNav) {
         // Landscape with side navigation
@@ -68,16 +88,34 @@ fun PurrytifyAppScaffold(
             }
             
             // Content area
-            Box(
+            Column(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxHeight()
             ) {
-                PurrytifyNavHost(
-                    navController = navController,
-                    isNetworkAvailable = isNetworkAvailable,
-                    startDestination = startDestination
-                )
+                // Main content
+                Box(
+                    modifier = Modifier.weight(1f)
+                ) {
+                    PurrytifyNavHost(
+                        navController = navController,
+                        isNetworkAvailable = isNetworkAvailable,
+                        startDestination = startDestination
+                    )
+                }
+                
+                // Mini player at bottom
+                if (showMiniPlayer) {
+                    MiniPlayer(
+                        onClick = {
+                            currentItem?.let { item ->
+                                val navigationId = playerViewModel.getNavigationId(item)
+                                navController.navigate(Routes.PLAYER.replace("{songId}", navigationId))
+                            }
+                        },
+                        viewModel = playerViewModel
+                    )
+                }
             }
         }
     } else {
@@ -100,16 +138,37 @@ fun PurrytifyAppScaffold(
                 }
             }
         ) { innerPadding ->
-            Box(
+            Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(innerPadding)
             ) {
-                PurrytifyNavHost(
-                    navController = navController,
-                    isNetworkAvailable = isNetworkAvailable,
-                    startDestination = startDestination
-                )
+                // Main content
+                Box(
+                    modifier = Modifier.weight(1f)
+                ) {
+                    PurrytifyNavHost(
+                        navController = navController,
+                        isNetworkAvailable = isNetworkAvailable,
+                        startDestination = startDestination
+                    )
+                }
+                
+                // Mini player at bottom (above bottom nav)
+                if (showMiniPlayer) {
+                    MiniPlayer(
+                        onClick = {
+                            currentItem?.let { item ->
+                                val navigationId = when (item) {
+                                    is com.example.purrytify.domain.model.PlaylistItem.LocalSong -> item.id
+                                    is com.example.purrytify.domain.model.PlaylistItem.OnlineSong -> item.originalId
+                                }
+                                navController.navigate(Routes.PLAYER.replace("{songId}", navigationId))
+                            }
+                        },
+                        viewModel = playerViewModel
+                    )
+                }
             }
         }
     }

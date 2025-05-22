@@ -5,7 +5,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.purrytify.data.local.datastore.UserPreferences
 import com.example.purrytify.data.repository.SongRepository
+import com.example.purrytify.domain.model.PlaylistItem
 import com.example.purrytify.domain.model.Song
+import com.example.purrytify.domain.player.PlaybackContext
+import com.example.purrytify.domain.player.PlayerBridge
 import com.example.purrytify.util.CountryUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -24,7 +27,8 @@ import javax.inject.Inject
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val songRepository: SongRepository,
-    private val userPreferences: UserPreferences
+    private val userPreferences: UserPreferences,
+    private val playerBridge: PlayerBridge
 ) : ViewModel() {
 
     private val TAG = "HomeViewModel"
@@ -77,6 +81,30 @@ class HomeViewModel @Inject constructor(
                 }
             }
         }
+        
+        // Monitor current playing item from player bridge
+        viewModelScope.launch {
+            playerBridge.currentItem.collect { currentItem ->
+                // Update current playing song if it's a local song
+                _currentPlayingSong.value = when (currentItem) {
+                    is PlaylistItem.LocalSong -> {
+                        Song(
+                            id = currentItem.id,
+                            title = currentItem.title,
+                            artist = currentItem.artist,
+                            artworkPath = currentItem.artworkPath,
+                            filePath = currentItem.filePath,
+                            duration = currentItem.durationMs,
+                            userId = 0, // Will be set by repository
+                            isLiked = currentItem.isLiked,
+                            createdAt = java.time.LocalDateTime.now(),
+                            updatedAt = java.time.LocalDateTime.now()
+                        )
+                    }
+                    else -> null
+                }
+            }
+        }
     }
 
     /**
@@ -117,12 +145,52 @@ class HomeViewModel @Inject constructor(
     }
 
     /**
-     * Handle song play action
+     * Play a song from the new songs section
+     */
+    fun playFromNewSongs(song: Song) {
+        Log.d(TAG, "Playing from new songs: ${song.title}")
+        
+        // Create a queue from all new songs
+        val queue = _newSongs.value.map { PlaylistItem.fromLocalSong(it) }
+        val startIndex = queue.indexOfFirst { it.id == song.id }
+        
+        if (startIndex >= 0) {
+            playerBridge.playQueue(queue, startIndex, PlaybackContext.NewSongs)
+            updateLastPlayed(song)
+        }
+    }
+    
+    /**
+     * Play a song from the recently played section
+     */
+    fun playFromRecentlyPlayed(song: Song) {
+        Log.d(TAG, "Playing from recently played: ${song.title}")
+        
+        // Create a queue from all recently played songs
+        val queue = _recentlyPlayedSongs.value.map { PlaylistItem.fromLocalSong(it) }
+        val startIndex = queue.indexOfFirst { it.id == song.id }
+        
+        if (startIndex >= 0) {
+            playerBridge.playQueue(queue, startIndex, PlaybackContext.RecentlyPlayed)
+            updateLastPlayed(song)
+        }
+    }
+
+    /**
+     * Handle song play action (legacy method for compatibility)
      */
     fun playSong(song: Song) {
-        _currentPlayingSong.value = song
+        Log.d(TAG, "Playing song: ${song.title}")
         
-        // Update the song's last played timestamp
+        // Default to playing as single song
+        playerBridge.playSong(song)
+        updateLastPlayed(song)
+    }
+    
+    /**
+     * Update the song's last played timestamp
+     */
+    private fun updateLastPlayed(song: Song) {
         viewModelScope.launch {
             try {
                 val userId = _userId.value ?: return@launch

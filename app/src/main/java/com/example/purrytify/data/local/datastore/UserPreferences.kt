@@ -25,6 +25,8 @@ class UserPreferences @Inject constructor(
         val USERNAME = stringPreferencesKey("username")
         val EMAIL = stringPreferencesKey("email")
         val LOCATION = stringPreferencesKey("location")
+        val DAILY_PLAYLIST_DATE = stringPreferencesKey("daily_playlist_date")
+        val DAILY_PLAYLIST_JSON = stringPreferencesKey("daily_playlist_json")
     }
 
     /**
@@ -49,6 +51,20 @@ class UserPreferences @Inject constructor(
     }
 
     /**
+     * Get the last daily playlist generation date
+     */
+    val dailyPlaylistDate: Flow<String?> = dataStore.data.map { preferences ->
+        preferences[PreferencesKeys.DAILY_PLAYLIST_DATE]
+    }
+
+    /**
+     * Get the cached daily playlist as JSON string
+     */
+    val dailyPlaylistJson: Flow<String?> = dataStore.data.map { preferences ->
+        preferences[PreferencesKeys.DAILY_PLAYLIST_JSON]
+    }
+
+    /**
      * Save user info after login/profile update
      */
     suspend fun saveUserInfo(user: User) {
@@ -70,6 +86,26 @@ class UserPreferences @Inject constructor(
     }
 
     /**
+     * Save daily playlist generation info
+     */
+    suspend fun saveDailyPlaylistInfo(date: String, playlistJson: String) {
+        dataStore.edit { preferences ->
+            preferences[PreferencesKeys.DAILY_PLAYLIST_DATE] = date
+            preferences[PreferencesKeys.DAILY_PLAYLIST_JSON] = playlistJson
+        }
+    }
+
+    /**
+     * Clear daily playlist cache (force regeneration)
+     */
+    suspend fun clearDailyPlaylistCache() {
+        dataStore.edit { preferences ->
+            preferences.remove(PreferencesKeys.DAILY_PLAYLIST_DATE)
+            preferences.remove(PreferencesKeys.DAILY_PLAYLIST_JSON)
+        }
+    }
+
+    /**
      * Clear all user data on logout
      */
     suspend fun clearUserData() {
@@ -78,6 +114,8 @@ class UserPreferences @Inject constructor(
             preferences.remove(PreferencesKeys.USERNAME)
             preferences.remove(PreferencesKeys.EMAIL)
             preferences.remove(PreferencesKeys.LOCATION)
+            preferences.remove(PreferencesKeys.DAILY_PLAYLIST_DATE)
+            preferences.remove(PreferencesKeys.DAILY_PLAYLIST_JSON)
         }
     }
 }

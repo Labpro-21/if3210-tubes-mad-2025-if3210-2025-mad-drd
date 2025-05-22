@@ -54,6 +54,10 @@ class PlayerViewModel @Inject constructor(
     private val _isUpdating = MutableStateFlow(false)
     val isUpdating: StateFlow<Boolean> = _isUpdating.asStateFlow()
     
+    // Download status for online songs
+    private val _isCurrentSongDownloaded = MutableStateFlow(false)
+    val isCurrentSongDownloaded: StateFlow<Boolean> = _isCurrentSongDownloaded.asStateFlow()
+    
     // Error states
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
@@ -66,6 +70,32 @@ class PlayerViewModel @Inject constructor(
             userPreferences.userId.collect { userId ->
                 _userId.value = userId
             }
+        }
+        
+        // Monitor current item changes to check download status
+        viewModelScope.launch {
+            currentItem.collect { item ->
+                checkDownloadStatus(item)
+            }
+        }
+    }
+    
+    /**
+     * Check if the current online song is downloaded
+     */
+    private suspend fun checkDownloadStatus(item: PlaylistItem?) {
+        if (item is PlaylistItem.OnlineSong) {
+            val userId = _userId.value ?: return
+            try {
+                val isDownloaded = songRepository.isOnlineSongDownloaded(item.originalId, userId)
+                _isCurrentSongDownloaded.value = isDownloaded
+                Log.d(TAG, "Download status for ${item.title}: $isDownloaded")
+            } catch (e: Exception) {
+                Log.e(TAG, "Error checking download status: ${e.message}", e)
+                _isCurrentSongDownloaded.value = false
+            }
+        } else {
+            _isCurrentSongDownloaded.value = false
         }
     }
     
@@ -137,7 +167,7 @@ class PlayerViewModel @Inject constructor(
      */
     fun downloadSong() {
         val item = currentItem.value
-        if (item is PlaylistItem.OnlineSong) {
+        if (item is PlaylistItem.OnlineSong && !_isCurrentSongDownloaded.value) {
             viewModelScope.launch {
                 val userId = _userId.value ?: return@launch
                 _isDownloading.value = true
@@ -163,23 +193,8 @@ class PlayerViewModel @Inject constructor(
                         is Result.Success -> {
                             Log.d(TAG, "Song downloaded successfully")
                             
-                            // Now try to get the downloaded song and update current item
-                            val downloadedSongResult = songRepository.getSongByOriginalId(item.originalId, userId)
-                            
-                            when (downloadedSongResult) {
-                                is Result.Success -> {
-                                    val localPlaylistItem = PlaylistItem.fromLocalSong(downloadedSongResult.data)
-                                    playerBridge.updateCurrentItem(localPlaylistItem)
-                                    Log.d(TAG, "Updated current item to downloaded local song")
-                                }
-                                is Result.Error -> {
-                                    Log.e(TAG, "Error getting downloaded song: ${downloadedSongResult.message}")
-                                }
-                                is Result.Loading -> {
-                                    // No-op
-                                }
-                            }
-                            
+                            // Update download status
+                            _isCurrentSongDownloaded.value = true
                             _isDownloading.value = false
                         }
                         is Result.Error -> {

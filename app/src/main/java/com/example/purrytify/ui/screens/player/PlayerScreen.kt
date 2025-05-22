@@ -51,6 +51,7 @@ fun PlayerScreen(
     val isDownloading by viewModel.isDownloading.collectAsState()
     val isUpdating by viewModel.isUpdating.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
+    val isCurrentSongDownloaded by viewModel.isCurrentSongDownloaded.collectAsState()
 
     // Dropdown menu state
     var showDropdown by remember { mutableStateOf(false) }
@@ -303,23 +304,38 @@ fun PlayerScreen(
                             }
                             is PlaylistItem.OnlineSong -> {
                                 IconButton(
-                                    onClick = { viewModel.downloadSong() },
+                                    onClick = { 
+                                        if (!isCurrentSongDownloaded) {
+                                            viewModel.downloadSong() 
+                                        }
+                                    },
                                     modifier = Modifier.size(56.dp),
-                                    enabled = !isDownloading
+                                    enabled = !isDownloading && !isCurrentSongDownloaded
                                 ) {
-                                    if (isDownloading) {
-                                        CircularProgressIndicator(
-                                            modifier = Modifier.size(24.dp),
-                                            color = PurrytifyGreen,
-                                            strokeWidth = 2.dp
-                                        )
-                                    } else {
-                                        Icon(
-                                            imageVector = Icons.Default.Download,
-                                            contentDescription = "Download",
-                                            tint = PurrytifyWhite,
-                                            modifier = Modifier.size(32.dp)
-                                        )
+                                    when {
+                                        isDownloading -> {
+                                            CircularProgressIndicator(
+                                                modifier = Modifier.size(24.dp),
+                                                color = PurrytifyGreen,
+                                                strokeWidth = 2.dp
+                                            )
+                                        }
+                                        isCurrentSongDownloaded -> {
+                                            Icon(
+                                                imageVector = Icons.Default.CloudDone,
+                                                contentDescription = "Downloaded",
+                                                tint = PurrytifyGreen,
+                                                modifier = Modifier.size(32.dp)
+                                            )
+                                        }
+                                        else -> {
+                                            Icon(
+                                                imageVector = Icons.Default.Download,
+                                                contentDescription = "Download",
+                                                tint = PurrytifyWhite,
+                                                modifier = Modifier.size(32.dp)
+                                            )
+                                        }
                                     }
                                 }
                             }

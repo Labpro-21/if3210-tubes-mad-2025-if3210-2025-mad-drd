@@ -10,7 +10,6 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -37,10 +36,9 @@ fun DailyPlaylistScreen(
     val uiState by viewModel.uiState.collectAsState()
     val currentPlayingItem by viewModel.currentPlayingItem.collectAsState()
     
-    // Load playlist when screen is first displayed
-    LaunchedEffect(Unit) {
-        viewModel.loadDailyPlaylist()
-    }
+    // Note: Removed LaunchedEffect(Unit) to prevent auto-regeneration
+    // The playlist will load automatically through the ViewModel's init block
+    // and will only regenerate if it's a new day or manually refreshed
     
     Scaffold(
         topBar = {
@@ -132,7 +130,7 @@ fun PlaylistContent(
             Spacer(modifier = Modifier.height(16.dp))
             
             Text(
-                text = "Your personalized daily mix of recommended songs based on your listening habits.",
+                text = "Your personalized daily mix of recommended songs based on your listening habits. This playlist updates once per day.",
                 style = Typography.bodyMedium,
                 color = PurrytifyLightGray,
                 modifier = Modifier.padding(bottom = 24.dp)

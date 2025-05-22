@@ -18,6 +18,7 @@ import java.time.LocalDateTime
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.flow.first
 
 /**
  * Repository for song operations
@@ -290,6 +291,29 @@ class SongRepository @Inject constructor(
         } catch (e: Exception) {
             Log.e(TAG, "Error adding downloaded song: ${e.message}", e)
             Result.Error(e, "Failed to add downloaded song: ${e.localizedMessage}")
+        }
+    }
+
+    /**
+     * Get a song by its original online ID (for downloaded songs)
+     * @param originalId The original online song ID
+     * @param userId The user ID
+     * @return Result containing the song if found
+     */
+    suspend fun getSongByOriginalId(originalId: String, userId: Int): Result<Song> = withContext(Dispatchers.IO) {
+        try {
+            // Query all songs for the user and find the one with matching original ID
+            val allSongs = songDao.getAllSongs(userId).first()
+            val song = allSongs.find { it.originalId == originalId }
+            
+            if (song != null) {
+                Result.Success(song.toDomain())
+            } else {
+                Result.Error(Exception("Song with original ID $originalId not found"))
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error getting song by original ID: ${e.message}", e)
+            Result.Error(e, "Failed to get song by original ID: ${e.localizedMessage}")
         }
     }
     

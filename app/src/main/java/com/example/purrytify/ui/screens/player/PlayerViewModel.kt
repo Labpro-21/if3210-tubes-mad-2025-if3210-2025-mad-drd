@@ -106,7 +106,24 @@ class PlayerViewModel @Inject constructor(
             viewModelScope.launch {
                 val userId = _userId.value ?: return@launch
                 try {
-                    songRepository.toggleLike(item.id, userId, !item.isLiked)
+                    Log.d(TAG, "Toggling like for song: ${item.title}, current state: ${item.isLiked}")
+                    
+                    // Toggle like in database
+                    val result = songRepository.toggleLike(item.id, userId, !item.isLiked)
+                    
+                    when (result) {
+                        is Result.Success -> {
+                            // Refresh the song data to get updated like status
+                            refreshCurrentSong()
+                        }
+                        is Result.Error -> {
+                            Log.e(TAG, "Error toggling like: ${result.message}")
+                            _errorMessage.value = "Failed to update like status"
+                        }
+                        is Result.Loading -> {
+                            // No-op
+                        }
+                    }
                 } catch (e: Exception) {
                     Log.e(TAG, "Error toggling like: ${e.message}", e)
                     _errorMessage.value = "Failed to update like status"
@@ -126,6 +143,8 @@ class PlayerViewModel @Inject constructor(
                 _isDownloading.value = true
                 
                 try {
+                    Log.d(TAG, "Downloading song: ${item.title}")
+                    
                     // Convert to OnlineSong for repository
                     val onlineSong = com.example.purrytify.domain.model.OnlineSong(
                         id = item.originalId.toLong(),
@@ -143,6 +162,24 @@ class PlayerViewModel @Inject constructor(
                     when (val result = topSongsRepository.downloadSong(onlineSong, userId)) {
                         is Result.Success -> {
                             Log.d(TAG, "Song downloaded successfully")
+                            
+                            // Now try to get the downloaded song and update current item
+                            val downloadedSongResult = songRepository.getSongByOriginalId(item.originalId, userId)
+                            
+                            when (downloadedSongResult) {
+                                is Result.Success -> {
+                                    val localPlaylistItem = PlaylistItem.fromLocalSong(downloadedSongResult.data)
+                                    playerBridge.updateCurrentItem(localPlaylistItem)
+                                    Log.d(TAG, "Updated current item to downloaded local song")
+                                }
+                                is Result.Error -> {
+                                    Log.e(TAG, "Error getting downloaded song: ${downloadedSongResult.message}")
+                                }
+                                is Result.Loading -> {
+                                    // No-op
+                                }
+                            }
+                            
                             _isDownloading.value = false
                         }
                         is Result.Error -> {
@@ -206,9 +243,15 @@ class PlayerViewModel @Inject constructor(
                 _isUpdating.value = true
                 
                 try {
+                    Log.d(TAG, "Updating song: ${item.title}")
+                    
                     when (val result = songRepository.updateSong(item.id, title, artist, artworkUri)) {
                         is Result.Success -> {
                             Log.d(TAG, "Song updated successfully")
+                            
+                            // Refresh current song data
+                            refreshCurrentSong()
+                            
                             _isUpdating.value = false
                             _showEditDialog.value = false
                         }
@@ -238,6 +281,8 @@ class PlayerViewModel @Inject constructor(
         if (item is PlaylistItem.LocalSong) {
             viewModelScope.launch {
                 try {
+                    Log.d(TAG, "Deleting song: ${item.title}")
+                    
                     when (val result = songRepository.deleteSong(item.id)) {
                         is Result.Success -> {
                             Log.d(TAG, "Song deleted successfully")
@@ -261,6 +306,33 @@ class PlayerViewModel @Inject constructor(
                     Log.e(TAG, "Error deleting song: ${e.message}", e)
                     _errorMessage.value = "Failed to delete song"
                 }
+            }
+        }
+    }
+    
+    /**
+     * Refresh current song data from database (for local songs)
+     */
+    private suspend fun refreshCurrentSong() {
+        val item = currentItem.value
+        if (item is PlaylistItem.LocalSong) {
+            try {
+                when (val result = songRepository.getSongById(item.id)) {
+                    is Result.Success -> {
+                        val updatedSong = result.data
+                        val updatedPlaylistItem = PlaylistItem.fromLocalSong(updatedSong)
+                        playerBridge.updateCurrentItem(updatedPlaylistItem)
+                        Log.d(TAG, "Refreshed current song data")
+                    }
+                    is Result.Error -> {
+                        Log.e(TAG, "Error refreshing song data: ${result.message}")
+                    }
+                    is Result.Loading -> {
+                        // No-op
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error refreshing song data: ${e.message}", e)
             }
         }
     }

@@ -1,19 +1,27 @@
 package com.example.purrytify.domain.player
 
 import android.util.Log
+import com.example.purrytify.data.repository.PlayerRepository
 import com.example.purrytify.domain.model.PlaylistItem
 import com.example.purrytify.domain.model.Song
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
  * Enhanced PlayerBridge to handle playback from both local and online sources with queue management
+ * Now connected to PlayerRepository for actual audio playback
  */
 @Singleton
-class PlayerBridge @Inject constructor() {
+class PlayerBridge @Inject constructor(
+    private val playerRepository: PlayerRepository
+) {
     
     private val TAG = "PlayerBridge"
     
@@ -29,7 +37,7 @@ class PlayerBridge @Inject constructor() {
     private val _currentItem = MutableStateFlow<PlaylistItem?>(null)
     val currentItem: StateFlow<PlaylistItem?> = _currentItem.asStateFlow()
     
-    // Playing state
+    // Playing state (synced from PlayerRepository)
     private val _isPlaying = MutableStateFlow(false)
     val isPlaying: StateFlow<Boolean> = _isPlaying.asStateFlow()
     
@@ -37,17 +45,65 @@ class PlayerBridge @Inject constructor() {
     private val _progress = MutableStateFlow(0f)
     val progress: StateFlow<Float> = _progress.asStateFlow()
     
-    // Current position in milliseconds
+    // Current position in milliseconds (synced from PlayerRepository)
     private val _currentPosition = MutableStateFlow(0L)
     val currentPosition: StateFlow<Long> = _currentPosition.asStateFlow()
     
-    // Duration in milliseconds
+    // Duration in milliseconds (synced from PlayerRepository)
     private val _duration = MutableStateFlow(0L)
     val duration: StateFlow<Long> = _duration.asStateFlow()
     
     // Playback context (for knowing the source)
     private val _playbackContext = MutableStateFlow<PlaybackContext>(PlaybackContext.None)
     val playbackContext: StateFlow<PlaybackContext> = _playbackContext.asStateFlow()
+    
+    // Internal scope for state synchronization
+    private val bridgeScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+    
+    init {
+        // Set up callbacks from PlayerRepository
+        playerRepository.onPlaybackEnded = {
+            Log.d(TAG, "Playback ended, playing next song")
+            next()
+        }
+        
+        playerRepository.onPlaybackError = { error ->
+            Log.e(TAG, "Playback error: $error")
+            // Could emit error state here if needed
+        }
+        
+        playerRepository.onPositionChanged = { position ->
+            updateProgress(position)
+        }
+        
+        // Start observing PlayerRepository state and sync with PlayerBridge state
+        startStateSynchronization()
+    }
+    
+    private fun startStateSynchronization() {
+        // Sync playing state
+        bridgeScope.launch {
+            playerRepository.isPlaying.collect { isPlaying ->
+                _isPlaying.value = isPlaying
+            }
+        }
+        
+        // Sync current position
+        bridgeScope.launch {
+            playerRepository.currentPosition.collect { position ->
+                _currentPosition.value = position
+                updateProgress(position)
+            }
+        }
+        
+        // Sync duration
+        bridgeScope.launch {
+            playerRepository.duration.collect { duration ->
+                _duration.value = duration
+                updateProgress(_currentPosition.value)
+            }
+        }
+    }
     
     /**
      * Play a queue of items starting from a specific index
@@ -70,23 +126,13 @@ class PlayerBridge @Inject constructor() {
         Log.d(TAG, "Playing ${item.title} by ${item.artist}")
         
         _currentItem.value = item
-        _isPlaying.value = true
+        
+        // Use PlayerRepository for actual playback
+        playerRepository.playItem(item)
+        
+        // Reset progress
         _progress.value = 0f
         _currentPosition.value = 0L
-        
-        // Set duration based on item type
-        when (item) {
-            is PlaylistItem.LocalSong -> {
-                _duration.value = item.durationMs
-            }
-            is PlaylistItem.OnlineSong -> {
-                // Parse duration string (mm:ss) to milliseconds
-                val parts = item.duration.split(":")
-                val minutes = parts.getOrNull(0)?.toLongOrNull() ?: 0
-                val seconds = parts.getOrNull(1)?.toLongOrNull() ?: 0
-                _duration.value = (minutes * 60 + seconds) * 1000
-            }
-        }
     }
     
     /**
@@ -119,6 +165,7 @@ class PlayerBridge @Inject constructor() {
         if (currentQueue.isNotEmpty()) {
             val nextIndex = (currentIdx + 1) % currentQueue.size
             _currentIndex.value = nextIndex
+            Log.d(TAG, "Playing next song: index $nextIndex")
             playItem(currentQueue[nextIndex])
         }
     }
@@ -133,6 +180,7 @@ class PlayerBridge @Inject constructor() {
         if (currentQueue.isNotEmpty()) {
             val prevIndex = if (currentIdx == 0) currentQueue.size - 1 else currentIdx - 1
             _currentIndex.value = prevIndex
+            Log.d(TAG, "Playing previous song: index $prevIndex")
             playItem(currentQueue[prevIndex])
         }
     }
@@ -141,19 +189,18 @@ class PlayerBridge @Inject constructor() {
      * Toggle play/pause
      */
     fun togglePlayPause() {
-        _isPlaying.value = !_isPlaying.value
+        playerRepository.togglePlayPause()
     }
     
     /**
      * Seek to a specific position
      */
     fun seekTo(position: Long) {
-        _currentPosition.value = position
-        _progress.value = if (_duration.value > 0) position.toFloat() / _duration.value else 0f
+        playerRepository.seekTo(position)
     }
     
     /**
-     * Update playback progress (called by media player)
+     * Update playback progress (called by position tracking)
      */
     fun updateProgress(position: Long) {
         _currentPosition.value = position
@@ -161,11 +208,29 @@ class PlayerBridge @Inject constructor() {
     }
     
     /**
+     * Update the current item without restarting playback (for like status changes, etc.)
+     */
+    fun updateCurrentItem(updatedItem: PlaylistItem) {
+        if (_currentItem.value?.id == updatedItem.id) {
+            Log.d(TAG, "Updating current item: ${updatedItem.title}")
+            _currentItem.value = updatedItem
+            
+            // Also update the item in the queue
+            val currentQueue = _queue.value.toMutableList()
+            val currentIdx = _currentIndex.value
+            if (currentIdx < currentQueue.size && currentQueue[currentIdx].id == updatedItem.id) {
+                currentQueue[currentIdx] = updatedItem
+                _queue.value = currentQueue
+            }
+        }
+    }
+    
+    /**
      * Stop playback and clear queue
      */
     fun stop() {
         Log.d(TAG, "Stopping playback")
-        _isPlaying.value = false
+        playerRepository.stop()
         _currentItem.value = null
         _queue.value = emptyList()
         _currentIndex.value = 0

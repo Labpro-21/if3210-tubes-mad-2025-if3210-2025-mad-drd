@@ -8,6 +8,7 @@ import androidx.room.Room
 import com.example.purrytify.data.local.dao.PlaybackEventDao
 import com.example.purrytify.data.local.dao.SongDao
 import com.example.purrytify.data.local.database.PurritifyDatabase
+import com.example.purrytify.data.repository.PlayerRepository
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -71,6 +72,15 @@ object AppModule {
     @Provides
     @Singleton
     fun provideApplicationScope(): CoroutineScope {
-        return CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        return CoroutineScope(SupervisorJob() + Dispatchers.Main)
+    }
+    
+    @Provides
+    @Singleton
+    fun providePlayerRepository(
+        @ApplicationContext context: Context,
+        externalScope: CoroutineScope
+    ): PlayerRepository {
+        return PlayerRepository(context, externalScope)
     }
 }

@@ -28,6 +28,7 @@ import com.example.purrytify.domain.model.Song
 import com.example.purrytify.ui.components.AudioOutputDialog
 import com.example.purrytify.ui.components.DeleteSongConfirmationSheet
 import com.example.purrytify.ui.components.EditSongModalBottomSheet
+import com.example.purrytify.ui.components.ShareSongBottomSheet
 import com.example.purrytify.ui.theme.*
 import java.io.File
 
@@ -49,6 +50,7 @@ fun PlayerScreen(
 
     val showEditDialog by viewModel.showEditDialog.collectAsState()
     val showDeleteDialog by viewModel.showDeleteDialog.collectAsState()
+    val showShareDialog by viewModel.showShareDialog.collectAsState()
     val isDownloading by viewModel.isDownloading.collectAsState()
     val isUpdating by viewModel.isUpdating.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
@@ -103,8 +105,8 @@ fun PlayerScreen(
                     }
                 },
                 actions = {
-                    // More options button (only for local songs)
-                    if (currentItem is PlaylistItem.LocalSong) {
+                    // More options button - show different options based on song type
+                    if (currentItem != null) {
                         Box {
                             IconButton(onClick = { showDropdown = true }) {
                                 Icon(
@@ -119,36 +121,49 @@ fun PlayerScreen(
                                 onDismissRequest = { showDropdown = false },
                                 modifier = Modifier.background(PurrytifyLighterBlack)
                             ) {
-                                DropdownMenuItem(
-                                    text = { Text("Edit Song", color = PurrytifyWhite) },
-                                    onClick = {
-                                        showDropdown = false
-                                        viewModel.showEditDialog()
+                                when (val item = currentItem) {
+                                    is PlaylistItem.LocalSong -> {
+                                        // Local songs: Edit and Delete
+                                        DropdownMenuItem(
+                                            text = { Text("Edit Song", color = PurrytifyWhite) },
+                                            onClick = {
+                                                showDropdown = false
+                                                viewModel.showEditDialog()
+                                            }
+                                        )
+                                        DropdownMenuItem(
+                                            text = { Text("Delete Song", color = PurritifyRed) },
+                                            onClick = {
+                                                showDropdown = false
+                                                viewModel.showDeleteDialog()
+                                            }
+                                        )
                                     }
-                                )
-                                DropdownMenuItem(
-                                    text = { Text("Delete Song", color = PurritifyRed) },
-                                    onClick = {
-                                        showDropdown = false
-                                        viewModel.showDeleteDialog()
+                                    is PlaylistItem.OnlineSong -> {
+                                        if (isCurrentSongDownloaded) {
+                                            // Downloaded online songs: Delete only
+                                            DropdownMenuItem(
+                                                text = { Text("Delete Song", color = PurritifyRed) },
+                                                onClick = {
+                                                    showDropdown = false
+                                                    viewModel.showDeleteDialog()
+                                                }
+                                            )
+                                        } else {
+                                            // Online songs: Share options
+                                            DropdownMenuItem(
+                                                text = { Text("Share Song", color = PurrytifyWhite) },
+                                                onClick = {
+                                                    showDropdown = false
+                                                    viewModel.showShareDialog()
+                                                }
+                                            )
+                                        }
                                     }
-                                )
-                                DropdownMenuItem(
-                                    text = { Text("Share Song via URL", color = PurrytifyLightGray) },
-                                    onClick = {
-                                        showDropdown = false
-                                        // TODO: Implement sharing
-                                    },
-                                    enabled = false
-                                )
-                                DropdownMenuItem(
-                                    text = { Text("Share Song via QR", color = PurrytifyLightGray) },
-                                    onClick = {
-                                        showDropdown = false
-                                        // TODO: Implement QR sharing
-                                    },
-                                    enabled = false
-                                )
+                                    null -> {
+                                        // No current item
+                                    }
+                                }
                             }
                         }
                     }
@@ -458,27 +473,63 @@ fun PlayerScreen(
 
     // Delete confirmation dialog
     currentItem?.let { item ->
-        if (showDeleteDialog && item is PlaylistItem.LocalSong) {
-            val localSong = Song(
-                id = item.id,
-                title = item.title,
-                artist = item.artist,
-                artworkPath = item.artworkPath,
-                filePath = item.filePath,
-                duration = item.durationMs,
-                userId = 0,
-                isLiked = item.isLiked,
-                createdAt = java.time.LocalDateTime.now(),
-                updatedAt = java.time.LocalDateTime.now()
-            )
+        if (showDeleteDialog) {
+            when (item) {
+                is PlaylistItem.LocalSong -> {
+                    val localSong = Song(
+                        id = item.id,
+                        title = item.title,
+                        artist = item.artist,
+                        artworkPath = item.artworkPath,
+                        filePath = item.filePath,
+                        duration = item.durationMs,
+                        userId = 0,
+                        isLiked = item.isLiked,
+                        createdAt = java.time.LocalDateTime.now(),
+                        updatedAt = java.time.LocalDateTime.now()
+                    )
 
-            DeleteSongConfirmationSheet(
-                isVisible = true,
-                song = localSong,
-                onDismiss = { viewModel.hideDeleteDialog() },
-                onConfirmDelete = { viewModel.deleteSong() }
-            )
+                    DeleteSongConfirmationSheet(
+                        isVisible = true,
+                        song = localSong,
+                        onDismiss = { viewModel.hideDeleteDialog() },
+                        onConfirmDelete = { viewModel.deleteSong() }
+                    )
+                }
+                is PlaylistItem.OnlineSong -> {
+                    if (isCurrentSongDownloaded) {
+                        // Create a temporary Song object for the confirmation dialog
+                        val tempSong = Song(
+                            id = item.originalId,
+                            title = item.title,
+                            artist = item.artist,
+                            artworkPath = "",
+                            filePath = "",
+                            duration = 0,
+                            userId = 0,
+                            createdAt = java.time.LocalDateTime.now(),
+                            updatedAt = java.time.LocalDateTime.now()
+                        )
+
+                        DeleteSongConfirmationSheet(
+                            isVisible = true,
+                            song = tempSong,
+                            onDismiss = { viewModel.hideDeleteDialog() },
+                            onConfirmDelete = { viewModel.deleteSong() }
+                        )
+                    }
+                }
+            }
         }
+    }
+
+    // Share song dialog
+    if (showShareDialog) {
+        ShareSongBottomSheet(
+            isVisible = true,
+            song = viewModel.getCurrentOnlineSong(),
+            onDismiss = { viewModel.hideShareDialog() }
+        )
     }
 
     // Audio output dialog

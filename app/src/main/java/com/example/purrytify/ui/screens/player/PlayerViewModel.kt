@@ -8,6 +8,7 @@ import com.example.purrytify.data.local.datastore.UserPreferences
 import com.example.purrytify.data.repository.SongRepository
 import com.example.purrytify.data.repository.TopSongsRepository
 import com.example.purrytify.domain.model.AudioDeviceInfo
+import com.example.purrytify.domain.model.OnlineSong
 import com.example.purrytify.domain.model.PlaylistItem
 import com.example.purrytify.domain.player.PlayerBridge
 import com.example.purrytify.domain.util.Result
@@ -49,6 +50,9 @@ class PlayerViewModel @Inject constructor(
     
     private val _showDeleteDialog = MutableStateFlow(false)
     val showDeleteDialog: StateFlow<Boolean> = _showDeleteDialog.asStateFlow()
+    
+    private val _showShareDialog = MutableStateFlow(false)
+    val showShareDialog: StateFlow<Boolean> = _showShareDialog.asStateFlow()
     
     // Loading states
     private val _isDownloading = MutableStateFlow(false)
@@ -188,7 +192,7 @@ class PlayerViewModel @Inject constructor(
                     Log.d(TAG, "Downloading song: ${item.title}")
                     
                     // Convert to OnlineSong for repository
-                    val onlineSong = com.example.purrytify.domain.model.OnlineSong(
+                    val onlineSong = OnlineSong(
                         id = item.originalId.toLong(),
                         title = item.title,
                         artist = item.artist,
@@ -245,10 +249,11 @@ class PlayerViewModel @Inject constructor(
     }
     
     /**
-     * Show delete confirmation dialog for local songs
+     * Show delete confirmation dialog for local songs or downloaded songs
      */
     fun showDeleteDialog() {
-        if (currentItem.value is PlaylistItem.LocalSong) {
+        val item = currentItem.value
+        if (item is PlaylistItem.LocalSong || (item is PlaylistItem.OnlineSong && _isCurrentSongDownloaded.value)) {
             _showDeleteDialog.value = true
         }
     }
@@ -258,6 +263,22 @@ class PlayerViewModel @Inject constructor(
      */
     fun hideDeleteDialog() {
         _showDeleteDialog.value = false
+    }
+    
+    /**
+     * Show share dialog for online songs
+     */
+    fun showShareDialog() {
+        if (currentItem.value is PlaylistItem.OnlineSong) {
+            _showShareDialog.value = true
+        }
+    }
+    
+    /**
+     * Hide share dialog
+     */
+    fun hideShareDialog() {
+        _showShareDialog.value = false
     }
     
     /**
@@ -305,33 +326,77 @@ class PlayerViewModel @Inject constructor(
      */
     fun deleteSong() {
         val item = currentItem.value
-        if (item is PlaylistItem.LocalSong) {
-            viewModelScope.launch {
-                try {
-                    Log.d(TAG, "Deleting song: ${item.title}")
-                    
-                    when (val result = songRepository.deleteSong(item.id)) {
-                        is Result.Success -> {
-                            Log.d(TAG, "Song deleted successfully")
-                            // Song deleted, move to next or stop
-                            if (queue.value.size > 1) {
-                                next()
-                            } else {
-                                playerBridge.stop()
+        when {
+            item is PlaylistItem.LocalSong -> {
+                // Delete local song
+                viewModelScope.launch {
+                    try {
+                        Log.d(TAG, "Deleting local song: ${item.title}")
+                        
+                        when (val result = songRepository.deleteSong(item.id)) {
+                            is Result.Success -> {
+                                Log.d(TAG, "Song deleted successfully")
+                                // Song deleted, move to next or stop
+                                if (queue.value.size > 1) {
+                                    next()
+                                } else {
+                                    playerBridge.stop()
+                                }
+                                _showDeleteDialog.value = false
                             }
-                            _showDeleteDialog.value = false
+                            is Result.Error -> {
+                                Log.e(TAG, "Error deleting song: ${result.message}")
+                                _errorMessage.value = result.message
+                            }
+                            is Result.Loading -> {
+                                // Keep loading state
+                            }
                         }
-                        is Result.Error -> {
-                            Log.e(TAG, "Error deleting song: ${result.message}")
-                            _errorMessage.value = result.message
-                        }
-                        is Result.Loading -> {
-                            // Keep loading state
-                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error deleting song: ${e.message}", e)
+                        _errorMessage.value = "Failed to delete song"
                     }
-                } catch (e: Exception) {
-                    Log.e(TAG, "Error deleting song: ${e.message}", e)
-                    _errorMessage.value = "Failed to delete song"
+                }
+            }
+            item is PlaylistItem.OnlineSong && _isCurrentSongDownloaded.value -> {
+                // Delete downloaded online song
+                viewModelScope.launch {
+                    try {
+                        Log.d(TAG, "Deleting downloaded online song: ${item.title}")
+                        
+                        val userId = _userId.value ?: return@launch
+                        
+                        // Find the downloaded song by original ID and delete it
+                        when (val result = songRepository.getSongByOriginalId(item.originalId, userId)) {
+                            is Result.Success -> {
+                                val localSong = result.data
+                                when (val deleteResult = songRepository.deleteSong(localSong.id)) {
+                                    is Result.Success -> {
+                                        Log.d(TAG, "Downloaded song deleted successfully")
+                                        _isCurrentSongDownloaded.value = false
+                                        _showDeleteDialog.value = false
+                                    }
+                                    is Result.Error -> {
+                                        Log.e(TAG, "Error deleting downloaded song: ${deleteResult.message}")
+                                        _errorMessage.value = deleteResult.message
+                                    }
+                                    is Result.Loading -> {
+                                        // Keep loading state
+                                    }
+                                }
+                            }
+                            is Result.Error -> {
+                                Log.e(TAG, "Error finding downloaded song: ${result.message}")
+                                _errorMessage.value = "Failed to find downloaded song"
+                            }
+                            is Result.Loading -> {
+                                // Keep loading state
+                            }
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error deleting downloaded song: ${e.message}", e)
+                        _errorMessage.value = "Failed to delete song"
+                    }
                 }
             }
         }
@@ -414,11 +479,35 @@ class PlayerViewModel @Inject constructor(
         return if (item is PlaylistItem.LocalSong) item.isLiked else false
     }
 
+    /**
+     * Get navigation ID for the current item
+     */
     fun getNavigationId(item: PlaylistItem): String {
         return when (item) {
             is PlaylistItem.LocalSong -> item.id
             is PlaylistItem.OnlineSong -> item.originalId
         }
+    }
+    
+    /**
+     * Get online song for sharing (if current item is online)
+     */
+    fun getCurrentOnlineSong(): OnlineSong? {
+        val item = currentItem.value
+        return if (item is PlaylistItem.OnlineSong) {
+            OnlineSong(
+                id = item.originalId.toLong(),
+                title = item.title,
+                artist = item.artist,
+                artworkUrl = item.artworkUrl,
+                songUrl = item.songUrl,
+                duration = item.duration,
+                country = "GLOBAL",
+                rank = 0,
+                createdAt = "",
+                updatedAt = ""
+            )
+        } else null
     }
     
     // Audio Output Methods

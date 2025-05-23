@@ -1,9 +1,11 @@
 package com.example.purrytify
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -23,6 +25,7 @@ import com.example.purrytify.ui.navigation.Routes
 import com.example.purrytify.ui.screens.player.PlayerViewModel
 import com.example.purrytify.ui.theme.PurrytifyBlack
 import com.example.purrytify.ui.theme.PurrytifyTheme
+import com.example.purrytify.util.DeepLinkHandler
 import com.example.purrytify.util.NetworkManager
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
@@ -35,6 +38,9 @@ class MainActivity : ComponentActivity() {
     
     @Inject
     lateinit var musicServiceConnection: MusicServiceConnection
+    
+    @Inject
+    lateinit var deepLinkHandler: DeepLinkHandler
 
     private val viewModel: MainViewModel by viewModels()
     private val playerViewModel: PlayerViewModel by viewModels()
@@ -72,9 +78,6 @@ class MainActivity : ComponentActivity() {
                 requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
         }
-        
-        // Handle deep link if activity was started from notification
-        handleIntent(intent)
 
         setContent {
             PurrytifyTheme {
@@ -96,34 +99,66 @@ class MainActivity : ComponentActivity() {
                             isNetworkAvailable = isNetworkAvailable,
                             playerViewModel = playerViewModel
                         )
-                        
-                        // Handle deep link from notification if present
-                        if (intent?.extras?.getBoolean("OPEN_PLAYER", false) == true) {
-                            val songId = intent.getStringExtra("SONG_ID") ?: ""
-                            if (songId.isNotEmpty()) {
-                                navController.navigate(Routes.PLAYER.replace("{songId}", songId))
-                                // Clear the intent to prevent duplicate navigation
-                                intent.removeExtra("OPEN_PLAYER")
-                            }
-                        }
                     }
+                }
+            }
+        }
+        
+        // Handle deep link from intent after UI is set up
+        handleDeepLinkFromIntent(intent)
+    }
+    
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleDeepLinkFromIntent(intent)
+    }
+    
+    /**
+     * Handle deep link from intent
+     */
+    private fun handleDeepLinkFromIntent(intent: Intent?) {
+        intent?.let { 
+            if (deepLinkHandler.hasDeepLink(it)) {
+                // Wait for the app to be fully initialized before handling deep link
+                // This prevents issues with handling deep links before the nav controller is ready
+                post {
+                    handleDeepLink(it)
                 }
             }
         }
     }
     
-    override fun onNewIntent(intent: android.content.Intent) {
-        super.onNewIntent(intent)
-        handleIntent(intent)
+    /**
+     * Handle deep link navigation
+     */
+    private fun handleDeepLink(intent: Intent) {
+        deepLinkHandler.handleDeepLink(
+            intent = intent,
+            onNavigateToPlayer = { songId ->
+                // Navigation to player will be handled by the deep link handler
+                // The player screen will be opened automatically when a song starts playing
+            },
+            onShowError = { errorMessage ->
+                showError(errorMessage)
+            }
+        )
     }
     
-    private fun handleIntent(intent: android.content.Intent?) {
-        // Process intent from notification or deep link
-        if (intent?.extras?.getBoolean("OPEN_PLAYER", false) == true) {
-            val songId = intent.getStringExtra("SONG_ID") ?: ""
-            if (songId.isNotEmpty()) {
-                // We'll navigate in setContent once navController is available
-            }
+    /**
+     * Show error message to user
+     */
+    private fun showError(message: String) {
+        Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+    }
+    
+    /**
+     * Post a runnable to be executed after a short delay
+     * This ensures the UI is fully initialized before handling deep links
+     */
+    private fun post(runnable: () -> Unit) {
+        window.decorView.post {
+            runnable()
         }
     }
     

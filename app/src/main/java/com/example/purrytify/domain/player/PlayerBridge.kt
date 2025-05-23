@@ -1,9 +1,13 @@
 package com.example.purrytify.domain.player
 
+import android.content.Context
+import android.content.Intent
 import android.util.Log
 import com.example.purrytify.data.repository.PlayerRepository
 import com.example.purrytify.domain.model.PlaylistItem
 import com.example.purrytify.domain.model.Song
+import com.example.purrytify.service.MusicService
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -20,7 +24,8 @@ import javax.inject.Singleton
  */
 @Singleton
 class PlayerBridge @Inject constructor(
-    private val playerRepository: PlayerRepository
+    private val playerRepository: PlayerRepository,
+    @ApplicationContext private val context: Context
 ) {
     
     private val TAG = "PlayerBridge"
@@ -116,6 +121,9 @@ class PlayerBridge @Inject constructor(
         
         if (queue.isNotEmpty() && startIndex < queue.size) {
             playItem(queue[startIndex])
+            
+            // Start music service for background playback
+            startMusicService()
         }
     }
     
@@ -133,6 +141,22 @@ class PlayerBridge @Inject constructor(
         // Reset progress
         _progress.value = 0f
         _currentPosition.value = 0L
+        
+        // Start music service for background playback
+        startMusicService()
+    }
+    
+    /**
+     * Start the music service
+     */
+    private fun startMusicService() {
+        try {
+            // Start the music service
+            val serviceIntent = Intent(context, MusicService::class.java)
+            context.startService(serviceIntent)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error starting music service: ${e.message}", e)
+        }
     }
     
     /**

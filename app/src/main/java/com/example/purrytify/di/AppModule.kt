@@ -9,6 +9,7 @@ import com.example.purrytify.data.local.dao.PlaybackEventDao
 import com.example.purrytify.data.local.dao.SongDao
 import com.example.purrytify.data.local.database.PurritifyDatabase
 import com.example.purrytify.data.repository.PlayerRepository
+import com.example.purrytify.service.MusicServiceConnection
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -82,5 +83,13 @@ object AppModule {
         externalScope: CoroutineScope
     ): PlayerRepository {
         return PlayerRepository(context, externalScope)
+    }
+    
+    @Provides
+    @Singleton
+    fun provideMusicServiceConnection(
+        @ApplicationContext context: Context
+    ): MusicServiceConnection {
+        return MusicServiceConnection(context)
     }
 }

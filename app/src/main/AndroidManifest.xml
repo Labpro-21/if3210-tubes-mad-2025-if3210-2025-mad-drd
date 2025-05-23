@@ -29,6 +29,11 @@
     
     <!-- Audio permissions -->
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    
+    <!-- Foreground service permission for music playback -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <!-- Required for OSMDroid tiles download -->
     <uses-permission android:name="android.permission.INTERNET" />
@@ -59,13 +64,20 @@
             android:name=".MainActivity"
             android:exported="true"
             android:theme="@style/Theme.Purrytify"
-            android:windowSoftInputMode="adjustResize">
+            android:windowSoftInputMode="adjustResize"
+            android:launchMode="singleTop">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
  
+        <!-- Music playback service -->
+        <service
+            android:name=".service.MusicService"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback" />
+            
         <!-- Token service (using WorkManager) -->
         <provider
             android:name="androidx.startup.InitializationProvider"
@@ -77,6 +89,19 @@
                 android:value="androidx.startup"
                 tools:node="remove" />
         </provider>
+        
+        <!-- Media notification receiver -->
+        <receiver
+            android:name=".broadcast.MediaNotificationReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.example.purrytify.PLAY" />
+                <action android:name="com.example.purrytify.PAUSE" />
+                <action android:name="com.example.purrytify.NEXT" />
+                <action android:name="com.example.purrytify.PREVIOUS" />
+                <action android:name="com.example.purrytify.STOP" />
+            </intent-filter>
+        </receiver>
         
         <!-- Network connectivity receiver -->
         <receiver

@@ -24,8 +24,11 @@ object PlayerModule {
      */
     @Provides
     @Singleton
-    fun providePlayerBridge(playerRepository: PlayerRepository): PlayerBridge {
-        return PlayerBridge(playerRepository)
+    fun providePlayerBridge(
+        playerRepository: PlayerRepository,
+        @ApplicationContext context: Context
+    ): PlayerBridge {
+        return PlayerBridge(playerRepository, context)
     }
     
     /**

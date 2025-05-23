@@ -71,6 +71,9 @@ dependencies {
     // splash screen
     implementation("androidx.core:core-splashscreen:1.0.1")
 
+    // Media support
+    implementation("androidx.media:media:1.6.0")
+
     // Hilt
     implementation(libs.hilt.android)
     kapt(libs.hilt.android.compiler)
@@ -112,6 +115,9 @@ dependencies {
 
     // Coil
     implementation(libs.coil.compose)
+
+    // Glide for image loading in notifications
+    implementation("com.github.bumptech.glide:glide:4.15.1")
 
     // ZXing
     implementation(libs.zxing.core)

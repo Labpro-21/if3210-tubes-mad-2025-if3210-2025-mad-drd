@@ -7,9 +7,11 @@ import androidx.lifecycle.viewModelScope
 import com.example.purrytify.data.local.datastore.UserPreferences
 import com.example.purrytify.data.repository.SongRepository
 import com.example.purrytify.data.repository.TopSongsRepository
+import com.example.purrytify.domain.model.AudioDeviceInfo
 import com.example.purrytify.domain.model.PlaylistItem
 import com.example.purrytify.domain.player.PlayerBridge
 import com.example.purrytify.domain.util.Result
+import com.example.purrytify.util.AudioOutputManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -25,7 +27,8 @@ class PlayerViewModel @Inject constructor(
     private val playerBridge: PlayerBridge,
     private val songRepository: SongRepository,
     private val topSongsRepository: TopSongsRepository,
-    private val userPreferences: UserPreferences
+    private val userPreferences: UserPreferences,
+    private val audioOutputManager: AudioOutputManager
 ) : ViewModel() {
     
     private val TAG = "PlayerViewModel"
@@ -61,6 +64,15 @@ class PlayerViewModel @Inject constructor(
     // Error states
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
+    
+    // Audio output related states
+    private val _showAudioOutputDialog = MutableStateFlow(false)
+    val showAudioOutputDialog: StateFlow<Boolean> = _showAudioOutputDialog.asStateFlow()
+    
+    // Audio device states from AudioOutputManager
+    val availableAudioDevices = audioOutputManager.availableDevices
+    val activeAudioDevice = audioOutputManager.activeDevice
+    val audioOutputError = audioOutputManager.errorMessage
     
     // User ID
     private val _userId = MutableStateFlow<Int?>(null)
@@ -407,5 +419,56 @@ class PlayerViewModel @Inject constructor(
             is PlaylistItem.LocalSong -> item.id
             is PlaylistItem.OnlineSong -> item.originalId
         }
+    }
+    
+    // Audio Output Methods
+    
+    /**
+     * Show audio output device selection dialog
+     */
+    fun showAudioOutputDialog() {
+        _showAudioOutputDialog.value = true
+        audioOutputManager.refreshAvailableDevices()
+    }
+    
+    /**
+     * Hide audio output device selection dialog
+     */
+    fun hideAudioOutputDialog() {
+        _showAudioOutputDialog.value = false
+    }
+    
+    /**
+     * Switch to selected audio device
+     */
+    fun switchToAudioDevice(device: AudioDeviceInfo) {
+        viewModelScope.launch {
+            Log.d(TAG, "Switching to audio device: ${device.name}")
+            audioOutputManager.switchToDevice(device)
+            
+            // Small delay to allow the switch to complete before dismissing dialog
+            kotlinx.coroutines.delay(100)
+            _showAudioOutputDialog.value = false
+        }
+    }
+    
+    /**
+     * Refresh available audio devices
+     */
+    fun refreshAudioDevices() {
+        audioOutputManager.refreshAvailableDevices()
+    }
+    
+    /**
+     * Clear audio output error
+     */
+    fun clearAudioOutputError() {
+        audioOutputManager.clearError()
+    }
+    
+    override fun onCleared() {
+        super.onCleared()
+        // Clean up audio output manager when ViewModel is destroyed
+        audioOutputManager.stopListening()
     }
 }

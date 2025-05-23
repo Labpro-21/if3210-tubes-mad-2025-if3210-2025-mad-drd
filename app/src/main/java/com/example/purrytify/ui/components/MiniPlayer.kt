@@ -9,6 +9,7 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Speaker
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -40,6 +41,7 @@ fun MiniPlayer(
     val currentItem by viewModel.currentItem.collectAsState()
     val isPlaying by viewModel.isPlaying.collectAsState()
     val progress by viewModel.progress.collectAsState()
+    val activeAudioDevice by viewModel.activeAudioDevice.collectAsState()
     
     if (currentItem != null) {
         Card(
@@ -140,6 +142,18 @@ fun MiniPlayer(
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
+                    }
+                    
+                    // Audio device indicator (show if not using built-in speaker)
+                    if (activeAudioDevice != null && activeAudioDevice?.name != "Phone Speaker") {
+                        Icon(
+                            imageVector = Icons.Default.Speaker,
+                            contentDescription = "External audio device active",
+                            tint = PurrytifyGreen,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        
+                        Spacer(modifier = Modifier.width(8.dp))
                     }
                     
                     // Like button (only for local songs)

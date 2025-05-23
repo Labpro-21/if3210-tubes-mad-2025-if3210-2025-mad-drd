@@ -25,6 +25,7 @@ import coil.request.ImageRequest
 import com.example.purrytify.R
 import com.example.purrytify.domain.model.PlaylistItem
 import com.example.purrytify.domain.model.Song
+import com.example.purrytify.ui.components.AudioOutputDialog
 import com.example.purrytify.ui.components.DeleteSongConfirmationSheet
 import com.example.purrytify.ui.components.EditSongModalBottomSheet
 import com.example.purrytify.ui.theme.*
@@ -53,6 +54,12 @@ fun PlayerScreen(
     val errorMessage by viewModel.errorMessage.collectAsState()
     val isCurrentSongDownloaded by viewModel.isCurrentSongDownloaded.collectAsState()
 
+    // Audio output states
+    val showAudioOutputDialog by viewModel.showAudioOutputDialog.collectAsState()
+    val availableAudioDevices by viewModel.availableAudioDevices.collectAsState()
+    val activeAudioDevice by viewModel.activeAudioDevice.collectAsState()
+    val audioOutputError by viewModel.audioOutputError.collectAsState()
+
     // Dropdown menu state
     var showDropdown by remember { mutableStateOf(false) }
 
@@ -67,6 +74,17 @@ fun PlayerScreen(
                 duration = SnackbarDuration.Short
             )
             viewModel.clearError()
+        }
+    }
+
+    // Show audio output error message
+    LaunchedEffect(audioOutputError) {
+        audioOutputError?.let { message ->
+            snackbarHostState.showSnackbar(
+                message = message,
+                duration = SnackbarDuration.Short
+            )
+            viewModel.clearAudioOutputError()
         }
     }
 
@@ -389,16 +407,15 @@ fun PlayerScreen(
 
                         Spacer(modifier = Modifier.width(24.dp))
 
-                        // Placeholder for future audio routing button
+                        // Audio routing button
                         IconButton(
-                            onClick = { /* TODO: Audio routing */ },
-                            modifier = Modifier.size(56.dp),
-                            enabled = false
+                            onClick = { viewModel.showAudioOutputDialog() },
+                            modifier = Modifier.size(56.dp)
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Speaker,
                                 contentDescription = "Audio output",
-                                tint = PurrytifyLightGray.copy(alpha = 0.5f),
+                                tint = if (activeAudioDevice?.name != "Phone Speaker") PurrytifyGreen else PurrytifyWhite,
                                 modifier = Modifier.size(32.dp)
                             )
                         }
@@ -463,4 +480,14 @@ fun PlayerScreen(
             )
         }
     }
+
+    // Audio output dialog
+    AudioOutputDialog(
+        isVisible = showAudioOutputDialog,
+        availableDevices = availableAudioDevices,
+        activeDevice = activeAudioDevice,
+        onDismiss = { viewModel.hideAudioOutputDialog() },
+        onDeviceSelected = { device -> viewModel.switchToAudioDevice(device) },
+        onRefreshDevices = { viewModel.refreshAudioDevices() }
+    )
 }

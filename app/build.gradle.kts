@@ -119,8 +119,9 @@ dependencies {
     // Glide for image loading in notifications
     implementation("com.github.bumptech.glide:glide:4.15.1")
 
-    // ZXing
+    // ZXing for QR code generation and scanning
     implementation(libs.zxing.core)
+    implementation("com.journeyapps:zxing-android-embedded:4.3.0")
 
     // OSMDroid
     implementation("org.osmdroid:osmdroid-android:6.1.17")

@@ -8,8 +8,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.QrCodeScanner
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -40,10 +41,12 @@ import javax.inject.Inject
 /**
  * Home screen with Charts, New Songs, and Recently Played sections
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     onNavigateToPlayer: (String) -> Unit,
     onNavigateToTopSongs: (String) -> Unit,
+    onNavigateToQRScanner: () -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     // Collect state from view model
@@ -62,148 +65,182 @@ fun HomeScreen(
         viewModel.refreshSongs()
     }
     
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(PurrytifyBlack)
-    ) {
-        if (isLoading) {
-            LoadingView()
-        } else {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                item {
-                    Spacer(modifier = Modifier.height(24.dp))
-                    
-                    // Charts Section
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
                     Text(
-                        text = "Charts",
+                        text = "Home",
                         style = Typography.titleLarge,
                         color = PurrytifyWhite,
                         fontWeight = FontWeight.Bold
                     )
-                    
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
-                    // Charts cards row
-                    LazyRow(
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                },
+                actions = {
+                    // QR Scanner button
+                    IconButton(
+                        onClick = onNavigateToQRScanner
                     ) {
-                        // Global Top 50 Card
-                        item {
-                            ChartCard(
-                                title = "Top 50",
-                                subtitle = "GLOBAL",
-                                isGlobal = true,
-                                isAvailable = true,
-                                onClick = { onNavigateToTopSongs("global") }
-                            )
-                        }
-                        
-                        // Country Top 10 Card (if available)
-                        item {
-                            ChartCard(
-                                title = "Top 10",
-                                subtitle = countryName.uppercase(),
-                                isGlobal = false,
-                                isAvailable = isCountrySongsAvailable,
-                                onClick = { onNavigateToTopSongs("country") }
-                            )
-                        }
-                        
-                        // Daily Playlist Card
-                        item {
-                            ChartCard(
-                                title = "Daily",
-                                subtitle = "PLAYLIST",
-                                isDailyPlaylist = true,
-                                isAvailable = true,
-                                onClick = { onNavigateToTopSongs("daily") }
-                            )
-                        }
-                    }
-                    
-                    Spacer(modifier = Modifier.height(32.dp))
-                    
-                    // New Songs Section
-                    Text(
-                        text = "New songs",
-                        style = Typography.titleLarge,
-                        color = PurrytifyWhite,
-                        fontWeight = FontWeight.Bold
-                    )
-                    
-                    Spacer(modifier = Modifier.height(16.dp))
-                }
-                
-                // New songs horizontal list
-                item {
-                    if (newSongs.isEmpty()) {
-                        Text(
-                            text = "No songs uploaded yet",
-                            style = Typography.bodyLarge,
-                            color = PurrytifyLightGray
+                        Icon(
+                            imageVector = Icons.Default.QrCodeScanner,
+                            contentDescription = "Scan QR Code",
+                            tint = PurrytifyWhite,
+                            modifier = Modifier.size(24.dp)
                         )
-                    } else {
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = PurrytifyBlack,
+                    titleContentColor = PurrytifyWhite,
+                    actionIconContentColor = PurrytifyWhite
+                )
+            )
+        }
+    ) { paddingValues ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(PurrytifyBlack)
+                .padding(paddingValues)
+        ) {
+            if (isLoading) {
+                LoadingView()
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    item {
+                        Spacer(modifier = Modifier.height(24.dp))
+                        
+                        // Charts Section
+                        Text(
+                            text = "Charts",
+                            style = Typography.titleLarge,
+                            color = PurrytifyWhite,
+                            fontWeight = FontWeight.Bold
+                        )
+                        
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
+                        // Charts cards row
                         LazyRow(
                             horizontalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
-                            items(newSongs) { song ->
-                                NewSongItem(
-                                    song = song,
-                                    isPlaying = currentPlayingSong?.id == song.id,
-                                    onClick = { 
-                                        viewModel.playFromNewSongs(song)
-                                        onNavigateToPlayer(song.id)
-                                    }
+                            // Global Top 50 Card
+                            item {
+                                ChartCard(
+                                    title = "Top 50",
+                                    subtitle = "GLOBAL",
+                                    isGlobal = true,
+                                    isAvailable = true,
+                                    onClick = { onNavigateToTopSongs("global") }
+                                )
+                            }
+                            
+                            // Country Top 10 Card (if available)
+                            item {
+                                ChartCard(
+                                    title = "Top 10",
+                                    subtitle = countryName.uppercase(),
+                                    isGlobal = false,
+                                    isAvailable = isCountrySongsAvailable,
+                                    onClick = { onNavigateToTopSongs("country") }
+                                )
+                            }
+                            
+                            // Daily Playlist Card
+                            item {
+                                ChartCard(
+                                    title = "Daily",
+                                    subtitle = "PLAYLIST",
+                                    isDailyPlaylist = true,
+                                    isAvailable = true,
+                                    onClick = { onNavigateToTopSongs("daily") }
                                 )
                             }
                         }
-                    }
-                    
-                    Spacer(modifier = Modifier.height(32.dp))
-                    
-                    // Recently Played Section
-                    Text(
-                        text = "Recently played",
-                        style = Typography.titleLarge,
-                        color = PurrytifyWhite,
-                        fontWeight = FontWeight.Bold
-                    )
-                    
-                    Spacer(modifier = Modifier.height(16.dp))
-                }
-                
-                // Recently played songs vertical list
-                if (recentlyPlayedSongs.isEmpty()) {
-                    item {
+                        
+                        Spacer(modifier = Modifier.height(32.dp))
+                        
+                        // New Songs Section
                         Text(
-                            text = "No recently played songs",
-                            style = Typography.bodyLarge,
-                            color = PurrytifyLightGray,
-                            modifier = Modifier.padding(bottom = 16.dp)
+                            text = "New songs",
+                            style = Typography.titleLarge,
+                            color = PurrytifyWhite,
+                            fontWeight = FontWeight.Bold
                         )
+                        
+                        Spacer(modifier = Modifier.height(16.dp))
                     }
-                } else {
-                    items(recentlyPlayedSongs) { song ->
-                        SongListItem(
-                            song = song,
-                            isPlaying = currentPlayingSong?.id == song.id,
-                            onClick = { 
-                                viewModel.playFromRecentlyPlayed(song)
-                                onNavigateToPlayer(song.id)
+                    
+                    // New songs horizontal list
+                    item {
+                        if (newSongs.isEmpty()) {
+                            Text(
+                                text = "No songs uploaded yet",
+                                style = Typography.bodyLarge,
+                                color = PurrytifyLightGray
+                            )
+                        } else {
+                            LazyRow(
+                                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                            ) {
+                                items(newSongs) { song ->
+                                    NewSongItem(
+                                        song = song,
+                                        isPlaying = currentPlayingSong?.id == song.id,
+                                        onClick = { 
+                                            viewModel.playFromNewSongs(song)
+                                            onNavigateToPlayer(song.id)
+                                        }
+                                    )
+                                }
                             }
+                        }
+                        
+                        Spacer(modifier = Modifier.height(32.dp))
+                        
+                        // Recently Played Section
+                        Text(
+                            text = "Recently played",
+                            style = Typography.titleLarge,
+                            color = PurrytifyWhite,
+                            fontWeight = FontWeight.Bold
                         )
+                        
+                        Spacer(modifier = Modifier.height(16.dp))
                     }
-                }
-                
-                // Bottom spacer for mini player
-                item {
-                    Spacer(modifier = Modifier.height(80.dp))
+                    
+                    // Recently played songs vertical list
+                    if (recentlyPlayedSongs.isEmpty()) {
+                        item {
+                            Text(
+                                text = "No recently played songs",
+                                style = Typography.bodyLarge,
+                                color = PurrytifyLightGray,
+                                modifier = Modifier.padding(bottom = 16.dp)
+                            )
+                        }
+                    } else {
+                        items(recentlyPlayedSongs) { song ->
+                            SongListItem(
+                                song = song,
+                                isPlaying = currentPlayingSong?.id == song.id,
+                                onClick = { 
+                                    viewModel.playFromRecentlyPlayed(song)
+                                    onNavigateToPlayer(song.id)
+                                }
+                            )
+                        }
+                    }
+                    
+                    // Bottom spacer for mini player
+                    item {
+                        Spacer(modifier = Modifier.height(80.dp))
+                    }
                 }
             }
         }

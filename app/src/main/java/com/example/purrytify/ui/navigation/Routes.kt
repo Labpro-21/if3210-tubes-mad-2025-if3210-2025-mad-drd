@@ -22,6 +22,9 @@ object Routes {
     // Playlist routes
     const val DAILY_PLAYLIST = "playlist/daily"
     
+    // QR Scanner route
+    const val QR_SCANNER = "qr_scanner"
+    
     // Other routes
     const val ADD_SONG = "add_song"
     const val EDIT_SONG = "edit_song/{songId}"

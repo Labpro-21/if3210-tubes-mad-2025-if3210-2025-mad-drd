@@ -9,7 +9,7 @@ import com.google.zxing.qrcode.QRCodeWriter
 import java.util.EnumMap
 
 /**
- * Utility class for generating QR codes
+ * Utility class for generating and processing QR codes
  */
 object QRCodeUtils {
     private const val TAG = "QRCodeUtils"
@@ -62,7 +62,7 @@ object QRCodeUtils {
         width: Int = 512,
         height: Int = 512
     ): Bitmap? {
-        val deepLink = "purrytify://song/$songId"
+        val deepLink = createSongDeepLink(songId)
         return generateQRCode(deepLink, width, height)
     }
     
@@ -82,9 +82,17 @@ object QRCodeUtils {
      */
     fun isValidSongDeepLink(deepLink: String): Boolean {
         return try {
-            deepLink.startsWith("purrytify://song/") && 
-            deepLink.substring("purrytify://song/".length).isNotEmpty()
+            // More comprehensive validation
+            when {
+                deepLink.isBlank() -> false
+                !deepLink.startsWith("purrytify://song/") -> false
+                else -> {
+                    val songId = deepLink.substring("purrytify://song/".length)
+                    songId.isNotEmpty() && songId.trim() == songId && songId.matches(Regex("^[a-zA-Z0-9_-]+$"))
+                }
+            }
         } catch (e: Exception) {
+            Log.e(TAG, "Error validating deep link: ${e.message}", e)
             false
         }
     }
@@ -97,13 +105,63 @@ object QRCodeUtils {
     fun extractSongIdFromDeepLink(deepLink: String): String? {
         return try {
             if (isValidSongDeepLink(deepLink)) {
-                deepLink.substring("purrytify://song/".length)
+                val songId = deepLink.substring("purrytify://song/".length)
+                if (songId.isNotEmpty()) songId else null
             } else {
                 null
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error extracting song ID from deep link: ${e.message}", e)
             null
+        }
+    }
+    
+    /**
+     * Validate and sanitize a manually input song link
+     * @param input The user input to validate
+     * @return Sanitized deep link if valid, null otherwise
+     */
+    fun validateAndSanitizeInput(input: String): String? {
+        val trimmedInput = input.trim()
+        
+        // Handle various input formats
+        return when {
+            // Already a proper deep link
+            trimmedInput.startsWith("purrytify://song/") -> {
+                if (isValidSongDeepLink(trimmedInput)) trimmedInput else null
+            }
+            
+            // Just the song ID (create full deep link)
+            trimmedInput.matches(Regex("^[a-zA-Z0-9_-]+$")) -> {
+                createSongDeepLink(trimmedInput)
+            }
+            
+            // HTTP/HTTPS URLs that might contain song ID (future enhancement)
+            trimmedInput.startsWith("http") -> {
+                // For now, reject HTTP links, but this could be enhanced
+                // to extract song IDs from web URLs in the future
+                null
+            }
+            
+            else -> null
+        }
+    }
+    
+    /**
+     * Get a user-friendly error message for invalid input
+     * @param input The invalid input
+     * @return User-friendly error message
+     */
+    fun getValidationErrorMessage(input: String): String {
+        val trimmedInput = input.trim()
+        
+        return when {
+            trimmedInput.isEmpty() -> "Please enter a song link"
+            trimmedInput.startsWith("http") -> "Web URLs are not supported yet. Please use purrytify:// links"
+            trimmedInput.contains(" ") -> "Song links should not contain spaces"
+            !trimmedInput.startsWith("purrytify://") -> "Link must start with 'purrytify://song/'"
+            !trimmedInput.startsWith("purrytify://song/") -> "Link must be in format 'purrytify://song/SONG_ID'"
+            else -> "Invalid song link format"
         }
     }
 }

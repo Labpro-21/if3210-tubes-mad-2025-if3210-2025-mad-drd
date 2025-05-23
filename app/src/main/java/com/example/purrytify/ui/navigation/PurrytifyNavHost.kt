@@ -12,6 +12,7 @@ import com.example.purrytify.ui.screens.home.HomeScreen
 import com.example.purrytify.ui.screens.library.LibraryScreen
 import com.example.purrytify.ui.screens.player.PlayerScreen
 import com.example.purrytify.ui.screens.profile.ProfileScreen
+import com.example.purrytify.ui.screens.scanner.QRScannerScreen
 import com.example.purrytify.ui.screens.topsongs.TopSongsScreen
 import com.example.purrytify.ui.screens.playlist.DailyPlaylistScreen
 
@@ -51,6 +52,9 @@ fun PurrytifyNavHost(
                         "country" -> navController.navigate(Routes.TOP_SONGS_COUNTRY)
                         "daily" -> navController.navigate(Routes.DAILY_PLAYLIST)
                     }
+                },
+                onNavigateToQRScanner = {
+                    navController.navigate(Routes.QR_SCANNER)
                 }
             )
         }
@@ -85,6 +89,19 @@ fun PurrytifyNavHost(
             PlayerScreen(
                 songId = songId, 
                 onBackPressed = { navController.popBackStack() }
+            )
+        }
+        
+        // QR Scanner Screen
+        composable(Routes.QR_SCANNER) {
+            QRScannerScreen(
+                onBackPressed = { navController.popBackStack() },
+                onNavigateToPlayer = { songId ->
+                    navController.navigate(Routes.PLAYER.replace("{songId}", songId)) {
+                        // Pop the scanner screen from the back stack
+                        popUpTo(Routes.QR_SCANNER) { inclusive = true }
+                    }
+                }
             )
         }
         

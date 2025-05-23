@@ -2,10 +2,10 @@ package com.example.purrytify.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -13,16 +13,19 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.example.purrytify.domain.model.AudioDeviceInfo
 import com.example.purrytify.domain.model.AudioDeviceType
 import com.example.purrytify.ui.theme.*
 
 /**
- * Bottom sheet dialog for selecting audio output device
+ * Improved audio output device selection dialog
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -35,81 +38,171 @@ fun AudioOutputDialog(
     onRefreshDevices: () -> Unit
 ) {
     if (isVisible) {
-        ModalBottomSheet(
+        Dialog(
             onDismissRequest = onDismiss,
-            containerColor = PurrytifyLighterBlack,
-            contentColor = PurrytifyWhite,
-            shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
-            dragHandle = {
-                // Custom drag handle to make it more obvious
-                Box(
-                    modifier = Modifier
-                        .width(40.dp)
-                        .height(4.dp)
-                        .background(PurrytifyLightGray, RoundedCornerShape(2.dp))
-                )
-            }
+            properties = DialogProperties(
+                dismissOnBackPress = true,
+                dismissOnClickOutside = true,
+                usePlatformDefaultWidth = false
+            )
         ) {
-            Column(
+            Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .padding(16.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = PurrytifyLighterBlack
+                ),
+                shape = RoundedCornerShape(16.dp)
             ) {
-                // Header
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                Column(
+                    modifier = Modifier.padding(20.dp)
                 ) {
+                    // Header
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Audio Output",
+                            style = Typography.titleLarge,
+                            color = PurrytifyWhite,
+                            fontWeight = FontWeight.Bold
+                        )
+                        
+                        Row {
+                            // Refresh button
+                            IconButton(
+                                onClick = onRefreshDevices,
+                                modifier = Modifier.size(40.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Refresh,
+                                    contentDescription = "Refresh devices",
+                                    tint = PurrytifyLightGray,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                            
+                            // Close button
+                            IconButton(
+                                onClick = onDismiss,
+                                modifier = Modifier.size(40.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Close",
+                                    tint = PurrytifyLightGray,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
+                    }
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    // Current active device info
+                    if (activeDevice != null) {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(
+                                containerColor = PurrytifyGreen.copy(alpha = 0.1f)
+                            ),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = getDeviceIcon(activeDevice.type),
+                                    contentDescription = null,
+                                    tint = PurrytifyGreen,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                
+                                Spacer(modifier = Modifier.width(12.dp))
+                                
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = "Currently Playing",
+                                        style = Typography.bodySmall,
+                                        color = PurrytifyLightGray
+                                    )
+                                    Text(
+                                        text = activeDevice.name,
+                                        style = Typography.bodyLarge,
+                                        color = PurrytifyGreen,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
+                                
+                                Icon(
+                                    imageVector = Icons.Default.VolumeUp,
+                                    contentDescription = "Active",
+                                    tint = PurrytifyGreen,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
+                        
+                        Spacer(modifier = Modifier.height(16.dp))
+                    }
+                    
+                    // Available devices list
                     Text(
-                        text = "Select Audio Output",
-                        style = Typography.titleLarge,
+                        text = "Available Devices",
+                        style = Typography.bodyLarge,
                         color = PurrytifyWhite,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Medium
                     )
                     
-                    // Refresh button
-                    IconButton(
-                        onClick = onRefreshDevices,
-                        modifier = Modifier.size(40.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Refresh,
-                            contentDescription = "Refresh devices",
-                            tint = PurrytifyGreen,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                }
-                
-                Divider(
-                    color = PurrytifyDarkGray,
-                    thickness = 1.dp,
-                    modifier = Modifier.padding(bottom = 16.dp)
-                )
-                
-                // Device list
-                LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    items(availableDevices) { device ->
-                        AudioDeviceItem(
-                            device = device,
-                            isActive = device.id == activeDevice?.id,
-                            onClick = { 
-                                if (device.isConnected) {
-                                    onDeviceSelected(device)
-                                }
-                            }
-                        )
-                    }
+                    Spacer(modifier = Modifier.height(12.dp))
                     
-                    // Bottom spacing
-                    item {
-                        Spacer(modifier = Modifier.height(16.dp))
+                    if (availableDevices.isEmpty()) {
+                        // Empty state
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(24.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Speaker,
+                                    contentDescription = null,
+                                    tint = PurrytifyLightGray,
+                                    modifier = Modifier.size(32.dp)
+                                )
+                                
+                                Spacer(modifier = Modifier.height(8.dp))
+                                
+                                Text(
+                                    text = "No devices found",
+                                    style = Typography.bodyMedium,
+                                    color = PurrytifyLightGray
+                                )
+                            }
+                        }
+                    } else {
+                        // Device list
+                        LazyColumn(
+                            modifier = Modifier.heightIn(max = 300.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            items(availableDevices) { device ->
+                                AudioDeviceItem(
+                                    device = device,
+                                    isActive = device.id == activeDevice?.id,
+                                    onClick = { onDeviceSelected(device) }
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -129,91 +222,73 @@ private fun AudioDeviceItem(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(
-                enabled = device.isConnected,
-            ) {
-                onClick() 
-            },
+            .clickable { if (!isActive) onClick() },
         colors = CardDefaults.cardColors(
-            containerColor = if (isActive) PurrytifyGreen.copy(alpha = 0.2f) else PurrytifyBlack,
-            contentColor = PurrytifyWhite
+            containerColor = if (isActive) PurrytifyDarkGray else PurrytifyBlack
         ),
-        shape = RoundedCornerShape(12.dp),
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = if (isActive) 4.dp else 2.dp
-        )
+        shape = RoundedCornerShape(8.dp)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Device icon and info
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.weight(1f)
+            // Device icon
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(
+                        if (isActive) PurrytifyGreen.copy(alpha = 0.2f) 
+                        else PurrytifyDarkGray
+                    ),
+                contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = getDeviceIcon(device.type),
                     contentDescription = null,
-                    tint = if (device.isConnected) {
-                        if (isActive) PurrytifyGreen else PurrytifyWhite
-                    } else {
-                        PurrytifyLightGray
-                    },
-                    modifier = Modifier.size(24.dp)
+                    tint = if (isActive) PurrytifyGreen else PurrytifyLightGray,
+                    modifier = Modifier.size(20.dp)
                 )
-                
-                Spacer(modifier = Modifier.width(12.dp))
-                
-                Column(
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text(
-                        text = device.name,
-                        style = Typography.bodyLarge,
-                        color = if (device.isConnected) {
-                            if (isActive) PurrytifyGreen else PurrytifyWhite
-                        } else {
-                            PurrytifyLightGray
-                        },
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        fontWeight = if (isActive) FontWeight.SemiBold else FontWeight.Normal
-                    )
-                    
-                    Text(
-                        text = if (device.isConnected) {
-                            if (isActive) "Active" else "Connected"
-                        } else {
-                            "Not connected"
-                        },
-                        style = Typography.bodySmall,
-                        color = if (device.isConnected) {
-                            if (isActive) PurrytifyGreen else PurrytifyLightGray
-                        } else {
-                            PurrytifyLightGray.copy(alpha = 0.7f)
-                        }
-                    )
-                }
             }
             
-            // Active indicator
-            if (isActive) {
-                Icon(
-                    imageVector = Icons.Default.CheckCircle,
-                    contentDescription = "Active device",
-                    tint = PurrytifyGreen,
-                    modifier = Modifier.size(20.dp)
+            Spacer(modifier = Modifier.width(16.dp))
+            
+            // Device info
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = device.name,
+                    style = Typography.bodyLarge,
+                    color = if (isActive) PurrytifyGreen else PurrytifyWhite,
+                    fontWeight = if (isActive) FontWeight.Medium else FontWeight.Normal,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
-            } else if (!device.isConnected) {
+                
+                Text(
+                    text = device.type.getDisplayName(),
+                    style = Typography.bodySmall,
+                    color = PurrytifyLightGray,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            
+            // Status indicator
+            if (isActive) {
+                Box(
+                    modifier = Modifier
+                        .size(8.dp)
+                        .clip(CircleShape)
+                        .background(PurrytifyGreen)
+                )
+            } else {
                 Icon(
-                    imageVector = Icons.Default.Error,
-                    contentDescription = "Disconnected",
-                    tint = PurrytifyLightGray.copy(alpha = 0.7f),
-                    modifier = Modifier.size(20.dp)
+                    imageVector = Icons.Default.ChevronRight,
+                    contentDescription = "Select",
+                    tint = PurrytifyLightGray,
+                    modifier = Modifier.size(16.dp)
                 )
             }
         }
@@ -221,15 +296,15 @@ private fun AudioDeviceItem(
 }
 
 /**
- * Get icon for device type
+ * Get appropriate icon for device type
  */
 private fun getDeviceIcon(type: AudioDeviceType): ImageVector {
     return when (type) {
         AudioDeviceType.BUILT_IN_SPEAKER -> Icons.Default.Speaker
-        AudioDeviceType.WIRED_HEADSET -> Icons.Default.Headset
-        AudioDeviceType.BLUETOOTH_SPEAKER -> Icons.Default.SpeakerGroup
+        AudioDeviceType.WIRED_HEADSET -> Icons.Default.Headphones
+        AudioDeviceType.BLUETOOTH_SPEAKER -> Icons.Default.Bluetooth
         AudioDeviceType.BLUETOOTH_HEADSET -> Icons.Default.BluetoothAudio
         AudioDeviceType.USB_DEVICE -> Icons.Default.Usb
-        AudioDeviceType.UNKNOWN -> Icons.Default.AudioFile
+        AudioDeviceType.UNKNOWN -> Icons.Default.DeviceUnknown
     }
 }

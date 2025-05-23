@@ -135,25 +135,39 @@ fun MiniPlayer(
                             overflow = TextOverflow.Ellipsis
                         )
                         
-                        Text(
-                            text = currentItem?.artist ?: "",
-                            style = Typography.bodySmall,
-                            color = PurrytifyLightGray,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                    
-                    // Audio device indicator (show if not using built-in speaker)
-                    if (activeAudioDevice != null && activeAudioDevice?.name != "Phone Speaker") {
-                        Icon(
-                            imageVector = Icons.Default.Speaker,
-                            contentDescription = "External audio device active",
-                            tint = PurrytifyGreen,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        
-                        Spacer(modifier = Modifier.width(8.dp))
+                        // Show artist name and audio device info
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = currentItem?.artist ?: "",
+                                style = Typography.bodySmall,
+                                color = PurrytifyLightGray,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f, fill = false)
+                            )
+                            
+                            // Audio device indicator (show if not using built-in speaker)
+                            if (viewModel.isExternalAudioDeviceActive()) {
+                                Spacer(modifier = Modifier.width(4.dp))
+                                
+                                Icon(
+                                    imageVector = Icons.Default.Speaker,
+                                    contentDescription = "External audio device active",
+                                    tint = PurrytifyGreen,
+                                    modifier = Modifier.size(12.dp)
+                                )
+                                
+                                Text(
+                                    text = " • ${viewModel.getCurrentAudioDeviceName()}",
+                                    style = Typography.bodySmall,
+                                    color = PurrytifyGreen,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
                     }
                     
                     // Like button (only for local songs)

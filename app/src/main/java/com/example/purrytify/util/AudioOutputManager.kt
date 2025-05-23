@@ -9,7 +9,6 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.media.AudioDeviceCallback
 import android.media.AudioDeviceInfo
 import android.media.AudioManager
 import android.os.Build
@@ -27,7 +26,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Refactored audio output manager with improved device switching and routing
+ * Simplified and more reliable AudioOutputManager
  */
 @Singleton
 class AudioOutputManager @Inject constructor(
@@ -38,10 +37,6 @@ class AudioOutputManager @Inject constructor(
     
     private val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
     private val bluetoothManager = context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
-    
-    // Audio routing state tracking
-    private var currentAudioRoute = AudioRoute.SPEAKER
-    private var previousAudioMode = AudioManager.MODE_NORMAL
     
     // Available audio devices
     private val _availableDevices = MutableStateFlow<List<com.example.purrytify.domain.model.AudioDeviceInfo>>(emptyList())
@@ -54,13 +49,8 @@ class AudioOutputManager @Inject constructor(
     // Error messages
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
-
-    // Internal audio routing enum for cleaner state management
-    private enum class AudioRoute {
-        SPEAKER, WIRED_HEADSET, BLUETOOTH_A2DP, BLUETOOTH_SCO, USB
-    }
     
-    // Simplified device change receiver
+    // Device change receiver
     private val deviceChangeReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             when (intent?.action) {
@@ -69,39 +59,15 @@ class AudioOutputManager @Inject constructor(
                 AudioManager.ACTION_AUDIO_BECOMING_NOISY,
                 AudioManager.ACTION_HEADSET_PLUG -> {
                     Log.d(TAG, "Audio device state changed: ${intent.action}")
-                    scanAvailableDevices()
+                    refreshAvailableDevices()
                 }
             }
         }
     }
     
-    // Modern audio device callback for API 23+
-    @RequiresApi(Build.VERSION_CODES.M)
-    private val audioDeviceCallback = object : AudioDeviceCallback() {
-        override fun onAudioDevicesAdded(addedDevices: Array<out AudioDeviceInfo>?) {
-            Log.d(TAG, "Audio devices added: ${addedDevices?.size}")
-            scanAvailableDevices()
-        }
-        
-        override fun onAudioDevicesRemoved(removedDevices: Array<out AudioDeviceInfo>?) {
-            Log.d(TAG, "Audio devices removed: ${removedDevices?.size}")
-            scanAvailableDevices()
-        }
-    }
-    
     init {
-        initializeAudioRouting()
         startDeviceMonitoring()
-        scanAvailableDevices()
-    }
-    
-    /**
-     * Initialize audio routing state
-     */
-    private fun initializeAudioRouting() {
-        previousAudioMode = audioManager.mode
-        currentAudioRoute = determineCurrentAudioRoute()
-        Log.d(TAG, "Initialized with route: $currentAudioRoute, mode: $previousAudioMode")
+        refreshAvailableDevices()
     }
     
     /**
@@ -116,11 +82,6 @@ class AudioOutputManager @Inject constructor(
                 addAction(AudioManager.ACTION_HEADSET_PLUG)
             }
             context.registerReceiver(deviceChangeReceiver, filter)
-            
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                audioManager.registerAudioDeviceCallback(audioDeviceCallback, null)
-            }
-            
             Log.d(TAG, "Started device monitoring")
         } catch (e: Exception) {
             Log.e(TAG, "Error starting device monitoring: ${e.message}", e)
@@ -133,11 +94,6 @@ class AudioOutputManager @Inject constructor(
     fun stopDeviceMonitoring() {
         try {
             context.unregisterReceiver(deviceChangeReceiver)
-            
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                audioManager.unregisterAudioDeviceCallback(audioDeviceCallback)
-            }
-            
             Log.d(TAG, "Stopped device monitoring")
         } catch (e: Exception) {
             Log.e(TAG, "Error stopping device monitoring: ${e.message}", e)
@@ -145,48 +101,37 @@ class AudioOutputManager @Inject constructor(
     }
     
     /**
-     * Determine current audio routing based on AudioManager state
+     * Refresh available audio devices
      */
-    private fun determineCurrentAudioRoute(): AudioRoute {
-        return when {
-            audioManager.isBluetoothScoOn -> AudioRoute.BLUETOOTH_SCO
-            audioManager.isBluetoothA2dpOn -> AudioRoute.BLUETOOTH_A2DP
-            audioManager.isWiredHeadsetOn -> AudioRoute.WIRED_HEADSET
-            else -> AudioRoute.SPEAKER
-        }
-    }
-    
-    /**
-     * Scan and update available audio devices
-     */
-    fun scanAvailableDevices() {
+    fun refreshAvailableDevices() {
         externalScope.launch(Dispatchers.IO) {
             try {
-                Log.d(TAG, "=== Scanning Available Devices ===")
-                logCurrentAudioState()
+                Log.d(TAG, "=== Refreshing Available Devices ===")
                 
                 val devices = mutableListOf<com.example.purrytify.domain.model.AudioDeviceInfo>()
                 
                 // Always add built-in speaker
-                val speakerActive = currentAudioRoute == AudioRoute.SPEAKER
-                devices.add(createBuiltInSpeakerDevice(speakerActive))
+                val speakerDevice = createBuiltInSpeakerDevice()
+                devices.add(speakerDevice)
                 
-                // Scan for connected devices
+                // Add other connected devices
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                    scanModernAudioDevices(devices)
+                    addModernAudioDevices(devices)
                 } else {
-                    scanLegacyAudioDevices(devices)
+                    addLegacyAudioDevices(devices)
                 }
+                
+                // Determine active device
+                val activeDevice = determineActiveDevice(devices)
                 
                 // Update state
                 _availableDevices.value = devices
-                updateActiveDevice(devices)
+                _activeDevice.value = activeDevice
                 
-                Log.d(TAG, "=== Device Scan Complete ===")
-                Log.d(TAG, "Total devices: ${devices.size}, Active: ${_activeDevice.value?.name}")
+                Log.d(TAG, "Found ${devices.size} devices, active: ${activeDevice?.name}")
                 
             } catch (e: Exception) {
-                Log.e(TAG, "Error scanning devices: ${e.message}", e)
+                Log.e(TAG, "Error refreshing devices: ${e.message}", e)
                 _errorMessage.value = "Failed to scan audio devices"
             }
         }
@@ -195,49 +140,51 @@ class AudioOutputManager @Inject constructor(
     /**
      * Create built-in speaker device info
      */
-    private fun createBuiltInSpeakerDevice(isActive: Boolean) = 
-        com.example.purrytify.domain.model.AudioDeviceInfo(
+    private fun createBuiltInSpeakerDevice(): com.example.purrytify.domain.model.AudioDeviceInfo {
+        return com.example.purrytify.domain.model.AudioDeviceInfo(
             id = 0,
             name = "Phone Speaker",
             type = AudioDeviceType.BUILT_IN_SPEAKER,
             isConnected = true,
-            isActive = isActive
+            isActive = false // Will be determined later
         )
-    
-    /**
-     * Log current audio manager state for debugging
-     */
-    private fun logCurrentAudioState() {
-        Log.d(TAG, "Audio State - Speaker: ${audioManager.isSpeakerphoneOn}, " +
-                  "Wired: ${audioManager.isWiredHeadsetOn}, " +
-                  "BT A2DP: ${audioManager.isBluetoothA2dpOn}, " +
-                  "BT SCO: ${audioManager.isBluetoothScoOn}, " +
-                  "Mode: ${audioManager.mode}")
     }
     
     /**
-     * Scan audio devices using modern API (API 23+)
+     * Add audio devices using modern API (API 23+)
      */
     @RequiresApi(Build.VERSION_CODES.M)
-    private fun scanModernAudioDevices(devices: MutableList<com.example.purrytify.domain.model.AudioDeviceInfo>) {
+    private fun addModernAudioDevices(devices: MutableList<com.example.purrytify.domain.model.AudioDeviceInfo>) {
         try {
             val audioDevices = audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS)
             
             audioDevices.forEach { device ->
-                createDeviceInfo(device)?.let { deviceInfo ->
-                    devices.add(deviceInfo)
-                    Log.d(TAG, "Found: ${deviceInfo.name} (${deviceInfo.type}, active: ${deviceInfo.isActive})")
+                when (device.type) {
+                    AudioDeviceInfo.TYPE_WIRED_HEADSET, 
+                    AudioDeviceInfo.TYPE_WIRED_HEADPHONES -> {
+                        devices.add(createDeviceInfo(device, AudioDeviceType.WIRED_HEADSET))
+                    }
+                    AudioDeviceInfo.TYPE_BLUETOOTH_A2DP -> {
+                        devices.add(createDeviceInfo(device, AudioDeviceType.BLUETOOTH_SPEAKER))
+                    }
+                    AudioDeviceInfo.TYPE_BLUETOOTH_SCO -> {
+                        devices.add(createDeviceInfo(device, AudioDeviceType.BLUETOOTH_HEADSET))
+                    }
+                    AudioDeviceInfo.TYPE_USB_DEVICE, 
+                    AudioDeviceInfo.TYPE_USB_HEADSET -> {
+                        devices.add(createDeviceInfo(device, AudioDeviceType.USB_DEVICE))
+                    }
                 }
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Error scanning modern audio devices: ${e.message}")
+            Log.e(TAG, "Error adding modern audio devices: ${e.message}")
         }
     }
     
     /**
-     * Scan audio devices using legacy API
+     * Add audio devices using legacy API
      */
-    private fun scanLegacyAudioDevices(devices: MutableList<com.example.purrytify.domain.model.AudioDeviceInfo>) {
+    private fun addLegacyAudioDevices(devices: MutableList<com.example.purrytify.domain.model.AudioDeviceInfo>) {
         // Wired headset
         if (audioManager.isWiredHeadsetOn) {
             devices.add(
@@ -246,20 +193,20 @@ class AudioOutputManager @Inject constructor(
                     name = "Wired Headset",
                     type = AudioDeviceType.WIRED_HEADSET,
                     isConnected = true,
-                    isActive = currentAudioRoute == AudioRoute.WIRED_HEADSET
+                    isActive = false
                 )
             )
         }
         
-        // Bluetooth A2DP
-        if (audioManager.isBluetoothA2dpOn) {
+        // Bluetooth devices (simplified detection)
+        if (audioManager.isBluetoothA2dpOn || audioManager.isBluetoothScoOn) {
             devices.add(
                 com.example.purrytify.domain.model.AudioDeviceInfo(
                     id = 2,
                     name = "Bluetooth Audio",
                     type = AudioDeviceType.BLUETOOTH_SPEAKER,
                     isConnected = true,
-                    isActive = currentAudioRoute == AudioRoute.BLUETOOTH_A2DP
+                    isActive = false
                 )
             )
         }
@@ -269,104 +216,80 @@ class AudioOutputManager @Inject constructor(
      * Create device info from AudioDeviceInfo (API 23+)
      */
     @RequiresApi(Build.VERSION_CODES.M)
-    private fun createDeviceInfo(device: AudioDeviceInfo): com.example.purrytify.domain.model.AudioDeviceInfo? {
-        val type = when (device.type) {
-            AudioDeviceInfo.TYPE_BUILTIN_SPEAKER -> return null // Skip built-in speaker
-            AudioDeviceInfo.TYPE_WIRED_HEADSET, AudioDeviceInfo.TYPE_WIRED_HEADPHONES -> AudioDeviceType.WIRED_HEADSET
-            AudioDeviceInfo.TYPE_BLUETOOTH_A2DP -> AudioDeviceType.BLUETOOTH_SPEAKER
-            AudioDeviceInfo.TYPE_BLUETOOTH_SCO -> AudioDeviceType.BLUETOOTH_HEADSET
-            AudioDeviceInfo.TYPE_USB_DEVICE, AudioDeviceInfo.TYPE_USB_HEADSET -> AudioDeviceType.USB_DEVICE
-            else -> AudioDeviceType.UNKNOWN
-        }
-        
+    private fun createDeviceInfo(
+        device: AudioDeviceInfo, 
+        type: AudioDeviceType
+    ): com.example.purrytify.domain.model.AudioDeviceInfo {
         val deviceName = device.productName?.toString() ?: type.getDisplayName()
-        val isActive = determineDeviceActiveStatus(device)
         
         return com.example.purrytify.domain.model.AudioDeviceInfo(
             id = device.id,
             name = deviceName,
             type = type,
             isConnected = true,
-            isActive = isActive
+            isActive = false // Will be determined later
         )
     }
     
     /**
-     * Determine if a specific device is currently active
+     * Determine which device is currently active
      */
-    @RequiresApi(Build.VERSION_CODES.M)
-    private fun determineDeviceActiveStatus(device: AudioDeviceInfo): Boolean {
-        return when (device.type) {
-            AudioDeviceInfo.TYPE_WIRED_HEADSET, AudioDeviceInfo.TYPE_WIRED_HEADPHONES -> 
-                currentAudioRoute == AudioRoute.WIRED_HEADSET
-            AudioDeviceInfo.TYPE_BLUETOOTH_A2DP -> 
-                currentAudioRoute == AudioRoute.BLUETOOTH_A2DP
-            AudioDeviceInfo.TYPE_BLUETOOTH_SCO -> 
-                currentAudioRoute == AudioRoute.BLUETOOTH_SCO
-            AudioDeviceInfo.TYPE_USB_DEVICE, AudioDeviceInfo.TYPE_USB_HEADSET -> 
-                currentAudioRoute == AudioRoute.USB
-            else -> false
-        }
+    private fun determineActiveDevice(devices: List<com.example.purrytify.domain.model.AudioDeviceInfo>): com.example.purrytify.domain.model.AudioDeviceInfo? {
+        return when {
+            // Check if Bluetooth SCO is active
+            audioManager.isBluetoothScoOn -> {
+                devices.find { it.type == AudioDeviceType.BLUETOOTH_HEADSET }
+            }
+            // Check if Bluetooth A2DP is active
+            audioManager.isBluetoothA2dpOn -> {
+                devices.find { it.type == AudioDeviceType.BLUETOOTH_SPEAKER }
+            }
+            // Check if wired headset is connected
+            audioManager.isWiredHeadsetOn -> {
+                devices.find { it.type == AudioDeviceType.WIRED_HEADSET }
+            }
+            // Default to speaker
+            else -> {
+                devices.find { it.type == AudioDeviceType.BUILT_IN_SPEAKER }
+            }
+        }?.copy(isActive = true)
     }
     
     /**
-     * Update active device in state
-     */
-    private fun updateActiveDevice(devices: List<com.example.purrytify.domain.model.AudioDeviceInfo>) {
-        val activeDevice = devices.find { it.isActive }
-        _activeDevice.value = activeDevice
-    }
-    
-    /**
-     * Main device switching method - this is the core fix for bluetooth-to-speaker switching
+     * Switch to selected audio device
      */
     fun switchToDevice(deviceInfo: com.example.purrytify.domain.model.AudioDeviceInfo) {
         externalScope.launch(Dispatchers.Main) {
             try {
-                Log.d(TAG, "=== Switching to: ${deviceInfo.name} (${deviceInfo.type}) ===")
-                logCurrentAudioState()
+                Log.d(TAG, "Switching to device: ${deviceInfo.name} (${deviceInfo.type})")
                 
-                // First, completely reset audio routing to ensure clean switch
-                resetAudioRouting()
-                
-                // Apply new routing based on device type
-                val targetRoute = when (deviceInfo.type) {
+                when (deviceInfo.type) {
                     AudioDeviceType.BUILT_IN_SPEAKER -> {
-                        applyBuiltInSpeakerRouting()
-                        AudioRoute.SPEAKER
+                        switchToSpeaker()
                     }
                     AudioDeviceType.WIRED_HEADSET -> {
-                        applyWiredHeadsetRouting()
-                        AudioRoute.WIRED_HEADSET
+                        switchToWiredHeadset()
                     }
                     AudioDeviceType.BLUETOOTH_SPEAKER -> {
-                        applyBluetoothA2dpRouting()
-                        AudioRoute.BLUETOOTH_A2DP
+                        switchToBluetoothA2dp()
                     }
                     AudioDeviceType.BLUETOOTH_HEADSET -> {
-                        applyBluetoothScoRouting()
-                        AudioRoute.BLUETOOTH_SCO
+                        switchToBluetoothSco()
                     }
                     AudioDeviceType.USB_DEVICE -> {
-                        applyUsbRouting()
-                        AudioRoute.USB
+                        switchToUsb()
                     }
                     AudioDeviceType.UNKNOWN -> {
-                        Log.w(TAG, "Cannot switch to unknown device type")
                         _errorMessage.value = "Cannot switch to unknown device"
                         return@launch
                     }
                 }
                 
-                // Update internal state
-                currentAudioRoute = targetRoute
+                // Wait a moment for the switch to take effect
+                kotlinx.coroutines.delay(300)
                 
-                // Wait for audio routing to stabilize
-                kotlinx.coroutines.delay(500)
-                
-                // Verify and log the switch result
-                logCurrentAudioState()
-                scanAvailableDevices()
+                // Refresh devices to update active status
+                refreshAvailableDevices()
                 
                 Log.d(TAG, "Successfully switched to ${deviceInfo.name}")
                 
@@ -378,22 +301,17 @@ class AudioOutputManager @Inject constructor(
     }
     
     /**
-     * Reset all audio routing to a clean state
+     * Switch to built-in speaker
      */
-    private fun resetAudioRouting() {
-        Log.d(TAG, "Resetting audio routing...")
-        
-        // Stop all Bluetooth routing
+    private fun switchToSpeaker() {
+        // Stop any Bluetooth audio
         audioManager.stopBluetoothSco()
         audioManager.isBluetoothScoOn = false
         
-        // Reset speaker phone
-        audioManager.isSpeakerphoneOn = false
+        // Enable speaker phone to force audio to speaker
+        audioManager.isSpeakerphoneOn = true
         
-        // Reset audio mode
-        audioManager.mode = AudioManager.MODE_NORMAL
-        
-        // Clear any communication device preferences (API 31+)
+        // Clear any preferred device (API 23+)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             try {
                 audioManager.clearCommunicationDevice()
@@ -401,83 +319,69 @@ class AudioOutputManager @Inject constructor(
                 Log.d(TAG, "clearCommunicationDevice not available: ${e.message}")
             }
         }
+        
+        Log.d(TAG, "Switched to built-in speaker")
     }
     
     /**
-     * Apply built-in speaker routing - THE KEY FIX
+     * Switch to wired headset
      */
-    private fun applyBuiltInSpeakerRouting() {
-        Log.d(TAG, "Applying built-in speaker routing")
-        
-        // CRITICAL: This is the main fix for the bluetooth-to-speaker issue
-        // We need to aggressively force audio to the speaker
-        
-        // Step 1: Completely disable Bluetooth audio
+    private fun switchToWiredHeadset() {
+        // Stop Bluetooth
         audioManager.stopBluetoothSco()
         audioManager.isBluetoothScoOn = false
         
-        // Step 2: Set audio mode that doesn't prefer Bluetooth
-        audioManager.mode = AudioManager.MODE_NORMAL
+        // Disable speaker phone to allow wired headset
+        audioManager.isSpeakerphoneOn = false
         
-        // Step 3: Force speaker phone on - this overrides Bluetooth A2DP routing
-        audioManager.isSpeakerphoneOn = true
-        
-        // Step 4: For modern APIs, try to set communication device to built-in speaker
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            try {
-                val outputDevices = audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS)
-                val speakerDevice = outputDevices.find { it.type == AudioDeviceInfo.TYPE_BUILTIN_SPEAKER }
-                speakerDevice?.let { device ->
-                    audioManager.setCommunicationDevice(device)
-                    Log.d(TAG, "Set communication device to built-in speaker")
-                }
-            } catch (e: Exception) {
-                Log.d(TAG, "Failed to set communication device: ${e.message}")
-            }
-        }
-        
-        Log.d(TAG, "Built-in speaker routing applied")
+        Log.d(TAG, "Switched to wired headset")
     }
     
     /**
-     * Apply wired headset routing
+     * Switch to Bluetooth A2DP
      */
-    private fun applyWiredHeadsetRouting() {
-        Log.d(TAG, "Applying wired headset routing")
-        // Wired headset should be automatically preferred when connected
-        audioManager.mode = AudioManager.MODE_NORMAL
+    private fun switchToBluetoothA2dp() {
+        // Disable speaker phone
+        audioManager.isSpeakerphoneOn = false
+        
+        // Stop SCO if active
+        audioManager.stopBluetoothSco()
+        audioManager.isBluetoothScoOn = false
+        
+        // A2DP should be automatically used if available
+        Log.d(TAG, "Switched to Bluetooth A2DP")
     }
     
     /**
-     * Apply Bluetooth A2DP routing
+     * Switch to Bluetooth SCO
      */
-    private fun applyBluetoothA2dpRouting() {
-        Log.d(TAG, "Applying Bluetooth A2DP routing")
-        audioManager.mode = AudioManager.MODE_NORMAL
-        // A2DP should route automatically when available
-    }
-    
-    /**
-     * Apply Bluetooth SCO routing
-     */
-    private fun applyBluetoothScoRouting() {
-        Log.d(TAG, "Applying Bluetooth SCO routing")
-        audioManager.mode = AudioManager.MODE_IN_COMMUNICATION
+    private fun switchToBluetoothSco() {
+        // Disable speaker phone
+        audioManager.isSpeakerphoneOn = false
+        
+        // Enable Bluetooth SCO
         audioManager.isBluetoothScoOn = true
         audioManager.startBluetoothSco()
+        
+        Log.d(TAG, "Switched to Bluetooth SCO")
     }
     
     /**
-     * Apply USB device routing
+     * Switch to USB device
      */
-    private fun applyUsbRouting() {
-        Log.d(TAG, "Applying USB routing")
-        audioManager.mode = AudioManager.MODE_NORMAL
-        // USB should route automatically when connected
+    private fun switchToUsb() {
+        // Stop Bluetooth
+        audioManager.stopBluetoothSco()
+        audioManager.isBluetoothScoOn = false
+        
+        // Disable speaker phone
+        audioManager.isSpeakerphoneOn = false
+        
+        Log.d(TAG, "Switched to USB device")
     }
     
     /**
-     * Handle device disconnection - automatically fallback to speaker
+     * Handle device disconnection
      */
     fun handleDeviceDisconnection(deviceInfo: com.example.purrytify.domain.model.AudioDeviceInfo) {
         externalScope.launch {
@@ -485,7 +389,7 @@ class AudioOutputManager @Inject constructor(
                 Log.d(TAG, "Device disconnected: ${deviceInfo.name}")
                 
                 // Fallback to built-in speaker
-                val builtInSpeaker = createBuiltInSpeakerDevice(true)
+                val builtInSpeaker = createBuiltInSpeakerDevice()
                 switchToDevice(builtInSpeaker)
                 
                 _errorMessage.value = "${deviceInfo.name} disconnected. Switched to phone speaker."
@@ -497,35 +401,32 @@ class AudioOutputManager @Inject constructor(
     }
     
     /**
-     * Force refresh of available devices (renamed for compatibility)
-     */
-    fun refreshAvailableDevices() {
-        scanAvailableDevices()
-    }
-    
-    /**
-     * Stop device monitoring (renamed for compatibility)
-     */
-    fun stopListening() {
-        stopDeviceMonitoring()
-    }
-    
-    
-    /**
-     * Clear any error messages
+     * Clear error messages
      */
     fun clearError() {
         _errorMessage.value = null
     }
     
     /**
-     * Cleanup method to call when the manager is no longer needed
+     * Get friendly name for current audio routing
+     */
+    fun getCurrentAudioRouteName(): String {
+        return _activeDevice.value?.name ?: "Phone Speaker"
+    }
+    
+    /**
+     * Check if external device is active
+     */
+    fun isExternalDeviceActive(): Boolean {
+        return _activeDevice.value?.type != AudioDeviceType.BUILT_IN_SPEAKER
+    }
+    
+    /**
+     * Cleanup method
      */
     fun cleanup() {
         try {
             stopDeviceMonitoring()
-            // Reset to normal audio mode on cleanup
-            audioManager.mode = previousAudioMode
             Log.d(TAG, "AudioOutputManager cleaned up")
         } catch (e: Exception) {
             Log.e(TAG, "Error during cleanup: ${e.message}", e)

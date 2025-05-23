@@ -430,7 +430,7 @@ fun PlayerScreen(
                             Icon(
                                 imageVector = Icons.Default.Speaker,
                                 contentDescription = "Audio output",
-                                tint = if (activeAudioDevice?.name != "Phone Speaker") PurrytifyGreen else PurrytifyWhite,
+                                tint = if (viewModel.isExternalAudioDeviceActive()) PurrytifyGreen else PurrytifyWhite,
                                 modifier = Modifier.size(32.dp)
                             )
                         }

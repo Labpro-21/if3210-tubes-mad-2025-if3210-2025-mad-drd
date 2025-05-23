@@ -517,7 +517,7 @@ class PlayerViewModel @Inject constructor(
      */
     fun showAudioOutputDialog() {
         _showAudioOutputDialog.value = true
-        audioOutputManager.refreshAvailableDevices()
+        refreshAudioDevices()
     }
     
     /**
@@ -531,11 +531,11 @@ class PlayerViewModel @Inject constructor(
      * Switch to selected audio device
      */
     fun switchToAudioDevice(device: AudioDeviceInfo) {
+        Log.d(TAG, "Switching to audio device: ${device.name}")
+        audioOutputManager.switchToDevice(device)
+        
+        // Small delay before dismissing dialog to allow the switch to complete
         viewModelScope.launch {
-            Log.d(TAG, "Switching to audio device: ${device.name}")
-            audioOutputManager.switchToDevice(device)
-            
-            // Small delay to allow the switch to complete before dismissing dialog
             kotlinx.coroutines.delay(100)
             _showAudioOutputDialog.value = false
         }
@@ -555,9 +555,23 @@ class PlayerViewModel @Inject constructor(
         audioOutputManager.clearError()
     }
     
+    /**
+     * Check if external audio device is active
+     */
+    fun isExternalAudioDeviceActive(): Boolean {
+        return audioOutputManager.isExternalDeviceActive()
+    }
+    
+    /**
+     * Get current audio output device name
+     */
+    fun getCurrentAudioDeviceName(): String {
+        return audioOutputManager.getCurrentAudioRouteName()
+    }
+    
     override fun onCleared() {
         super.onCleared()
         // Clean up audio output manager when ViewModel is destroyed
-        audioOutputManager.stopListening()
+        audioOutputManager.cleanup()
     }
 }

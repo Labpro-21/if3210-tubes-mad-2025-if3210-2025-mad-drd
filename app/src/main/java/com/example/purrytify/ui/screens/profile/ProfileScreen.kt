@@ -39,7 +39,10 @@ import java.io.FileOutputStream
 fun ProfileScreen(
     onNavigateToLogin: () -> Unit,
     isNetworkAvailable: Boolean,
-    viewModel: ProfileViewModel = hiltViewModel()
+    viewModel: ProfileViewModel = hiltViewModel(),
+    onNavigateToTimeListened: () -> Unit,
+    onNavigateToTopArtists: () -> Unit,
+    onNavigateToTopSongs: () -> Unit,
 ) {
     // If no network
     if (!isNetworkAvailable) {
@@ -56,6 +59,9 @@ fun ProfileScreen(
     val songsCount by viewModel.songsCount.collectAsState()
     val likedSongsCount by viewModel.likedSongsCount.collectAsState()
     val listenedSongsCount by viewModel.listenedSongsCount.collectAsState()
+
+    val currentMonthAnalytics by viewModel.currentMonthAnalytics.collectAsState()
+    val analyticsLoading by viewModel.analyticsLoading.collectAsState()
     
     val context = LocalContext.current
 
@@ -277,9 +283,18 @@ fun ProfileScreen(
                     }
                     
                     Spacer(modifier = Modifier.height(32.dp))
+
+                    // Sound Capsule Section
+                    com.example.purrytify.ui.components.SoundCapsuleSection(
+                        currentMonthAnalytics = currentMonthAnalytics,
+                        isLoading = analyticsLoading,
+                        onTimeListenedClick = onNavigateToTimeListened,
+                        onTopArtistClick = onNavigateToTopArtists,
+                        onTopSongClick = onNavigateToTopSongs,
+                        onExportClick = { viewModel.exportAnalytics() }
+                    )
                     
-                    // This area will be used for the Sound Capsule in the future
-                    // It's left empty for now, but the layout is set up to accommodate it
+                    Spacer(modifier = Modifier.height(32.dp))
                 }
                 
                 // Logout confirmation dialog

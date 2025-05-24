@@ -25,6 +25,11 @@ object Routes {
     // QR Scanner route
     const val QR_SCANNER = "qr_scanner"
     
+    // Analytics routes
+    const val TIME_LISTENED = "analytics/time_listened"
+    const val TOP_ARTISTS = "analytics/top_artists"
+    const val TOP_SONGS = "analytics/top_songs"
+        
     // Other routes
     const val ADD_SONG = "add_song"
     const val EDIT_SONG = "edit_song/{songId}"

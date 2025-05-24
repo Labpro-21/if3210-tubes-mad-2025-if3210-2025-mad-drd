@@ -85,6 +85,10 @@ class PlayerViewModel @Inject constructor(
         viewModelScope.launch {
             userPreferences.userId.collect { userId ->
                 _userId.value = userId
+                userId?.let {
+                    // Set user ID for analytics tracking
+                    playerBridge.setCurrentUserId(it)
+                }
             }
         }
         

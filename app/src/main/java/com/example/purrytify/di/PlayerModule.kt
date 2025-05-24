@@ -11,6 +11,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.CoroutineScope
 import javax.inject.Singleton
+import com.example.purrytify.domain.analytics.ListeningSessionTracker
 
 /**
  * Module for providing player-related dependencies
@@ -18,7 +19,6 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 object PlayerModule {
-    
     /**
      * Provide the PlayerBridge as a singleton with PlayerRepository dependency
      */
@@ -26,9 +26,22 @@ object PlayerModule {
     @Singleton
     fun providePlayerBridge(
         playerRepository: PlayerRepository,
+        listeningSessionTracker: ListeningSessionTracker,
         @ApplicationContext context: Context
     ): PlayerBridge {
-        return PlayerBridge(playerRepository, context)
+        return PlayerBridge(playerRepository, listeningSessionTracker, context)
+    }
+    
+    /**
+     * Provide the ListeningSessionTracker as a singleton
+     */
+    @Provides
+    @Singleton
+    fun provideListeningSessionTracker(
+        analyticsRepository: com.example.purrytify.data.repository.AnalyticsRepository,
+        externalScope: CoroutineScope
+    ): ListeningSessionTracker {
+        return ListeningSessionTracker(analyticsRepository, externalScope)
     }
     
     /**

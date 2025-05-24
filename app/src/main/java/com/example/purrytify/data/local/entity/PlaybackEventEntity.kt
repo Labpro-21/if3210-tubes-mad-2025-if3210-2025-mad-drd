@@ -24,7 +24,9 @@ import java.time.LocalDateTime
     indices = [
         Index(value = ["userId", "songId"]), // For song frequency analytics
         Index(value = ["userId", "startTime"]), // For date-based analytics
-        Index(value = ["songId"])
+        Index(value = ["songId"]),
+        Index(value = ["userId", "artistName"]), // For artist analytics
+        Index(value = ["userId", "songTitle", "artistName"]) // For song analytics
     ]
 )
 data class PlaybackEventEntity(
@@ -32,9 +34,9 @@ data class PlaybackEventEntity(
     val id: Long = 0,
     val userId: Int,
     val songId: String,
+    val songTitle: String, // Store song title for analytics (in case title is edited later)
+    val artistName: String, // Store artist name for analytics (in case artist is edited later)
     @TypeConverters(Converters::class)
     val startTime: LocalDateTime,
-    @TypeConverters(Converters::class)
-    val endTime: LocalDateTime? = null, // Null if still on current player
-    val duration: Long // Duration of playback in milliseconds
+    val listeningDuration: Long // Actual listening duration in milliseconds
 )

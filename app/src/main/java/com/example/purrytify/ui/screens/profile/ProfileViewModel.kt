@@ -4,8 +4,10 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.purrytify.data.local.datastore.UserPreferences
+import com.example.purrytify.data.repository.AnalyticsRepository
 import com.example.purrytify.data.repository.AuthRepository
 import com.example.purrytify.data.repository.ProfileRepository
+import com.example.purrytify.domain.model.MonthlyAnalytics
 import com.example.purrytify.domain.player.PlayerBridge
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,6 +25,7 @@ import javax.inject.Inject
 class ProfileViewModel @Inject constructor(
     private val profileRepository: ProfileRepository,
     private val authRepository: AuthRepository,
+    private val analyticsRepository: AnalyticsRepository,
     private val userPreferences: UserPreferences,
     private val playerBridge: PlayerBridge
 ) : ViewModel() {
@@ -56,9 +59,55 @@ class ProfileViewModel @Inject constructor(
     
     private val _listenedSongsCount = MutableStateFlow(0)
     val listenedSongsCount: StateFlow<Int> = _listenedSongsCount
+
+    // Song analytics
+    private val _currentMonthAnalytics = MutableStateFlow<MonthlyAnalytics?>(null)
+    val currentMonthAnalytics: StateFlow<MonthlyAnalytics?> = _currentMonthAnalytics.asStateFlow()
+
+    // Loading state for analytics
+    private val _analyticsLoading = MutableStateFlow(false)
+    val analyticsLoading: StateFlow<Boolean> = _analyticsLoading.asStateFlow()
+
+    // User ID
+    private val _userId = MutableStateFlow<Int?>(null)
+    val userId: StateFlow<Int?> = _userId.asStateFlow()
+
+    
     
     init {
+        // Load user ID and analytics
+        viewModelScope.launch {
+            userPreferences.userId.collect { userId ->
+                _userId.value = userId
+                userId?.let {
+                    // Set user ID for player bridge analytics
+                    playerBridge.setCurrentUserId(it)
+                    // Load analytics data
+                    loadCurrentMonthAnalytics()
+                    // Start periodic refresh for real-time updates
+                    startPeriodicAnalyticsRefresh()
+                }
+            }
+        }
+        
         loadProfile()
+    }
+    
+    /**
+     * Start periodic refresh of analytics for real-time updates
+     * Refreshes every 30 seconds while user is on profile page
+     */
+    private fun startPeriodicAnalyticsRefresh() {
+        viewModelScope.launch {
+            while (true) {
+                kotlinx.coroutines.delay(30_000) // 30 seconds
+                
+                // Only refresh if we have a user ID and current analytics
+                if (_userId.value != null && _currentMonthAnalytics.value != null) {
+                    loadCurrentMonthAnalytics()
+                }
+            }
+        }
     }
     
     /**
@@ -205,6 +254,63 @@ class ProfileViewModel @Inject constructor(
     
     fun dismissLogoutDialog() {
         _showLogoutDialog.value = false
+    }
+    
+    /**
+     * Load current month analytics for Sound Capsule display
+     */
+    private fun loadCurrentMonthAnalytics() {
+        val userId = _userId.value ?: return
+        
+        viewModelScope.launch {
+            try {
+                _analyticsLoading.value = true
+                
+                val analytics = analyticsRepository.getCurrentMonthAnalytics(userId)
+                _currentMonthAnalytics.value = analytics
+                
+                Log.d(TAG, "Loaded current month analytics: ${analytics.formattedListeningTime}")
+            } catch (e: Exception) {
+                Log.e(TAG, "Error loading current month analytics: ${e.message}", e)
+            } finally {
+                _analyticsLoading.value = false
+            }
+        }
+    }
+    
+    /**
+     * Refresh analytics data (called periodically or on user action)
+     */
+    fun refreshAnalytics() {
+        loadCurrentMonthAnalytics()
+    }
+    
+    /**
+     * Export current month analytics
+     */
+    fun exportAnalytics() {
+        val userId = _userId.value ?: return
+        val analytics = _currentMonthAnalytics.value ?: return
+        
+        if (!analytics.hasData) {
+            Log.w(TAG, "No analytics data to export")
+            return
+        }
+        
+        viewModelScope.launch {
+            try {
+                val csvContent = analyticsRepository.exportAnalyticsAsCSV(
+                    userId, 
+                    analytics.year, 
+                    analytics.month
+                )
+                
+                Log.d(TAG, "Analytics CSV generated successfully (${csvContent.length} characters)")
+                // Note: Full file sharing functionality is available in AnalyticsViewModel
+            } catch (e: Exception) {
+                Log.e(TAG, "Error exporting analytics: ${e.message}", e)
+            }
+        }
     }
     
     /**

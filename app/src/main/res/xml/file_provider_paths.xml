@@ -3,6 +3,9 @@
     <!-- Cache directory for sharing QR codes -->
     <cache-path name="shared_qr" path="shared_qr/" />
     
+    <!-- Cache directory for analytics exports -->
+    <cache-path name="analytics_exports" path="analytics/" />
+    
     <!-- External cache directory -->
     <external-cache-path name="external_cache" path="." />
     

@@ -69,12 +69,22 @@ fun PurrytifyNavHost(
         }
         
         // Profile Screen
+        // Profile Screen
         composable(Routes.PROFILE) {
             ProfileScreen(
                 onNavigateToLogin = {
                     navController.navigate(Routes.LOGIN) {
                         popUpTo(Routes.HOME) { inclusive = true }
                     }
+                },
+                onNavigateToTimeListened = {
+                    navController.navigate(Routes.TIME_LISTENED)
+                },
+                onNavigateToTopArtists = {
+                    navController.navigate(Routes.TOP_ARTISTS)
+                },
+                onNavigateToTopSongs = {
+                    navController.navigate(Routes.TOP_SONGS)
                 },
                 isNetworkAvailable = isNetworkAvailable
             )
@@ -128,6 +138,25 @@ fun PurrytifyNavHost(
                 onNavigateToPlayer = { songId ->
                     navController.navigate(Routes.PLAYER.replace("{songId}", songId))
                 }
+            )
+        }
+        
+        // Analytics Screens
+        composable(Routes.TIME_LISTENED) {
+            com.example.purrytify.ui.screens.analytics.TimeListenedScreen(
+                onBackPressed = { navController.popBackStack() }
+            )
+        }
+        
+        composable(Routes.TOP_ARTISTS) {
+            com.example.purrytify.ui.screens.analytics.TopArtistsScreen(
+                onBackPressed = { navController.popBackStack() }
+            )
+        }
+        
+        composable(Routes.TOP_SONGS) {
+            com.example.purrytify.ui.screens.analytics.TopSongsScreen(
+                onBackPressed = { navController.popBackStack() }
             )
         }
     }

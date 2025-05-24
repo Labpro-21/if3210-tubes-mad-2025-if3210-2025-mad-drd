@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.util.Log
 import com.example.purrytify.data.repository.PlayerRepository
+import com.example.purrytify.domain.analytics.ListeningSessionTracker
 import com.example.purrytify.domain.model.PlaylistItem
 import com.example.purrytify.domain.model.Song
 import com.example.purrytify.service.MusicService
@@ -19,12 +20,13 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Enhanced PlayerBridge to handle playback from both local and online sources with queue management
- * Now connected to PlayerRepository for actual audio playback
+ * Enhanced PlayerBridge to handle playbook from both local and online sources with queue management
+ * Now connected to PlayerRepository for actual audio playback and analytics tracking
  */
 @Singleton
 class PlayerBridge @Inject constructor(
     private val playerRepository: PlayerRepository,
+    private val listeningSessionTracker: ListeningSessionTracker,
     @ApplicationContext private val context: Context
 ) {
     
@@ -62,19 +64,23 @@ class PlayerBridge @Inject constructor(
     private val _playbackContext = MutableStateFlow<PlaybackContext>(PlaybackContext.None)
     val playbackContext: StateFlow<PlaybackContext> = _playbackContext.asStateFlow()
     
+    // Current user ID for analytics
+    private var currentUserId: Int? = null
+    
     // Internal scope for state synchronization
     private val bridgeScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     
     init {
         // Set up callbacks from PlayerRepository
         playerRepository.onPlaybackEnded = {
-            Log.d(TAG, "Playback ended, playing next song")
+            Log.d(TAG, "Playback ended, notifying analytics and playing next song")
+            listeningSessionTracker.onSongCompleted()
             next()
         }
         
         playerRepository.onPlaybackError = { error ->
             Log.e(TAG, "Playback error: $error")
-            // Could emit error state here if needed
+            listeningSessionTracker.onPlaybackStopped()
         }
         
         playerRepository.onPositionChanged = { position ->
@@ -90,6 +96,13 @@ class PlayerBridge @Inject constructor(
         bridgeScope.launch {
             playerRepository.isPlaying.collect { isPlaying ->
                 _isPlaying.value = isPlaying
+                
+                // Handle analytics tracking for play/pause
+                if (isPlaying) {
+                    listeningSessionTracker.resumeSession()
+                } else {
+                    listeningSessionTracker.pauseSession()
+                }
             }
         }
         
@@ -108,6 +121,14 @@ class PlayerBridge @Inject constructor(
                 updateProgress(_currentPosition.value)
             }
         }
+    }
+    
+    /**
+     * Set current user ID for analytics tracking
+     */
+    fun setCurrentUserId(userId: Int) {
+        currentUserId = userId
+        Log.d(TAG, "Set current user ID for analytics: $userId")
     }
     
     /**
@@ -132,6 +153,12 @@ class PlayerBridge @Inject constructor(
      */
     fun playItem(item: PlaylistItem) {
         Log.d(TAG, "Playing ${item.title} by ${item.artist}")
+        
+        // End previous session and start new one
+        val userId = currentUserId
+        if (userId != null) {
+            listeningSessionTracker.startSession(item, userId)
+        }
         
         _currentItem.value = item
         
@@ -183,6 +210,9 @@ class PlayerBridge @Inject constructor(
      * Play next song in queue
      */
     fun next() {
+        // End current session before switching
+        listeningSessionTracker.onSongSkipped()
+        
         val currentQueue = _queue.value
         val currentIdx = _currentIndex.value
         
@@ -198,6 +228,9 @@ class PlayerBridge @Inject constructor(
      * Play previous song in queue
      */
     fun previous() {
+        // End current session before switching
+        listeningSessionTracker.onSongSkipped()
+        
         val currentQueue = _queue.value
         val currentIdx = _currentIndex.value
         
@@ -254,6 +287,10 @@ class PlayerBridge @Inject constructor(
      */
     fun stop() {
         Log.d(TAG, "Stopping playback")
+        
+        // End analytics session
+        listeningSessionTracker.onPlaybackStopped()
+        
         playerRepository.stop()
         _currentItem.value = null
         _queue.value = emptyList()

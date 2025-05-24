@@ -60,9 +60,9 @@ class ProfileViewModel @Inject constructor(
     private val _listenedSongsCount = MutableStateFlow(0)
     val listenedSongsCount: StateFlow<Int> = _listenedSongsCount
 
-    // Song analytics
-    private val _currentMonthAnalytics = MutableStateFlow<MonthlyAnalytics?>(null)
-    val currentMonthAnalytics: StateFlow<MonthlyAnalytics?> = _currentMonthAnalytics.asStateFlow()
+    // All monthly analytics (for Sound Capsule display)
+    private val _allMonthlyAnalytics = MutableStateFlow<List<MonthlyAnalytics>>(emptyList())
+    val allMonthlyAnalytics: StateFlow<List<MonthlyAnalytics>> = _allMonthlyAnalytics.asStateFlow()
 
     // Loading state for analytics
     private val _analyticsLoading = MutableStateFlow(false)
@@ -82,8 +82,8 @@ class ProfileViewModel @Inject constructor(
                 userId?.let {
                     // Set user ID for player bridge analytics
                     playerBridge.setCurrentUserId(it)
-                    // Load analytics data
-                    loadCurrentMonthAnalytics()
+                    // Load all analytics data
+                    loadAllMonthlyAnalytics()
                     // Start periodic refresh for real-time updates
                     startPeriodicAnalyticsRefresh()
                 }
@@ -102,9 +102,9 @@ class ProfileViewModel @Inject constructor(
             while (true) {
                 kotlinx.coroutines.delay(30_000) // 30 seconds
                 
-                // Only refresh if we have a user ID and current analytics
-                if (_userId.value != null && _currentMonthAnalytics.value != null) {
-                    loadCurrentMonthAnalytics()
+                // Only refresh if we have a user ID
+                if (_userId.value != null) {
+                    loadAllMonthlyAnalytics()
                 }
             }
         }
@@ -257,21 +257,21 @@ class ProfileViewModel @Inject constructor(
     }
     
     /**
-     * Load current month analytics for Sound Capsule display
+     * Load all monthly analytics for Sound Capsule display
      */
-    private fun loadCurrentMonthAnalytics() {
+    private fun loadAllMonthlyAnalytics() {
         val userId = _userId.value ?: return
         
         viewModelScope.launch {
             try {
                 _analyticsLoading.value = true
                 
-                val analytics = analyticsRepository.getCurrentMonthAnalytics(userId)
-                _currentMonthAnalytics.value = analytics
+                val allAnalytics = analyticsRepository.getAllMonthlyAnalytics(userId)
+                _allMonthlyAnalytics.value = allAnalytics
                 
-                Log.d(TAG, "Loaded current month analytics: ${analytics.formattedListeningTime}")
+                Log.d(TAG, "Loaded analytics for ${allAnalytics.size} months")
             } catch (e: Exception) {
-                Log.e(TAG, "Error loading current month analytics: ${e.message}", e)
+                Log.e(TAG, "Error loading all monthly analytics: ${e.message}", e)
             } finally {
                 _analyticsLoading.value = false
             }
@@ -282,30 +282,20 @@ class ProfileViewModel @Inject constructor(
      * Refresh analytics data (called periodically or on user action)
      */
     fun refreshAnalytics() {
-        loadCurrentMonthAnalytics()
+        loadAllMonthlyAnalytics()
     }
     
     /**
-     * Export current month analytics
+     * Export analytics for a specific month
      */
-    fun exportAnalytics() {
+    fun exportAnalytics(year: Int, month: Int) {
         val userId = _userId.value ?: return
-        val analytics = _currentMonthAnalytics.value ?: return
-        
-        if (!analytics.hasData) {
-            Log.w(TAG, "No analytics data to export")
-            return
-        }
         
         viewModelScope.launch {
             try {
-                val csvContent = analyticsRepository.exportAnalyticsAsCSV(
-                    userId, 
-                    analytics.year, 
-                    analytics.month
-                )
+                val csvContent = analyticsRepository.exportAnalyticsAsCSV(userId, year, month)
                 
-                Log.d(TAG, "Analytics CSV generated successfully (${csvContent.length} characters)")
+                Log.d(TAG, "Analytics CSV generated successfully for $year-$month (${csvContent.length} characters)")
                 // Note: Full file sharing functionality is available in AnalyticsViewModel
             } catch (e: Exception) {
                 Log.e(TAG, "Error exporting analytics: ${e.message}", e)

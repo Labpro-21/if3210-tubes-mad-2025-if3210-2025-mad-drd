@@ -10,6 +10,7 @@ import com.example.purrytify.data.local.datastore.UserPreferences
 import com.example.purrytify.data.repository.AnalyticsRepository
 import com.example.purrytify.domain.model.ArtistAnalytics
 import com.example.purrytify.domain.model.MonthlyAnalytics
+import com.example.purrytify.domain.model.MonthYearData
 import com.example.purrytify.domain.model.SongAnalytics
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -34,9 +35,21 @@ class AnalyticsViewModel @Inject constructor(
     
     private val TAG = "AnalyticsViewModel"
     
-    // Current month analytics (for profile and real-time updates)
+    // All months analytics (for profile and all-time analytics)
+    private val _allMonthlyAnalytics = MutableStateFlow<List<MonthlyAnalytics>>(emptyList())
+    val allMonthlyAnalytics: StateFlow<List<MonthlyAnalytics>> = _allMonthlyAnalytics.asStateFlow()
+    
+    // Months with data
+    private val _monthsWithData = MutableStateFlow<List<MonthYearData>>(emptyList())
+    val monthsWithData: StateFlow<List<MonthYearData>> = _monthsWithData.asStateFlow()
+    
+    // Current month analytics (for real-time updates)
     private val _currentMonthAnalytics = MutableStateFlow<MonthlyAnalytics?>(null)
     val currentMonthAnalytics: StateFlow<MonthlyAnalytics?> = _currentMonthAnalytics.asStateFlow()
+    
+    // Specific month analytics (for detail screens)
+    private val _specificMonthAnalytics = MutableStateFlow<MonthlyAnalytics?>(null)
+    val specificMonthAnalytics: StateFlow<MonthlyAnalytics?> = _specificMonthAnalytics.asStateFlow()
     
     // Artist analytics for detail screen
     private val _artistAnalytics = MutableStateFlow<ArtistAnalytics?>(null)
@@ -66,6 +79,7 @@ class AnalyticsViewModel @Inject constructor(
             userPreferences.userId.collect { userId ->
                 _userId.value = userId
                 userId?.let {
+                    loadAllAnalytics()
                     loadCurrentMonthAnalytics()
                 }
             }
@@ -73,21 +87,26 @@ class AnalyticsViewModel @Inject constructor(
     }
     
     /**
-     * Load current month analytics (for profile display and real-time updates)
+     * Load all analytics data (for profile display)
      */
-    fun loadCurrentMonthAnalytics() {
+    fun loadAllAnalytics() {
         val userId = _userId.value ?: return
         
         viewModelScope.launch {
             try {
                 _isLoading.value = true
                 
-                val analytics = analyticsRepository.getCurrentMonthAnalytics(userId)
-                _currentMonthAnalytics.value = analytics
+                // Load months with data
+                val monthsData = analyticsRepository.getAllMonthsWithData(userId)
+                _monthsWithData.value = monthsData
                 
-                Log.d(TAG, "Loaded current month analytics: ${analytics.formattedListeningTime}")
+                // Load analytics for all months
+                val allAnalytics = analyticsRepository.getAllMonthlyAnalytics(userId)
+                _allMonthlyAnalytics.value = allAnalytics
+                
+                Log.d(TAG, "Loaded analytics for ${allAnalytics.size} months")
             } catch (e: Exception) {
-                Log.e(TAG, "Error loading current month analytics: ${e.message}", e)
+                Log.e(TAG, "Error loading all analytics: ${e.message}", e)
                 _errorMessage.value = "Failed to load analytics"
             } finally {
                 _isLoading.value = false
@@ -96,7 +115,26 @@ class AnalyticsViewModel @Inject constructor(
     }
     
     /**
-     * Load analytics for a specific month
+     * Load current month analytics (for real-time updates)
+     */
+    fun loadCurrentMonthAnalytics() {
+        val userId = _userId.value ?: return
+        
+        viewModelScope.launch {
+            try {
+                val analytics = analyticsRepository.getCurrentMonthAnalytics(userId)
+                _currentMonthAnalytics.value = analytics
+                
+                Log.d(TAG, "Loaded current month analytics: ${analytics.formattedListeningTime}")
+            } catch (e: Exception) {
+                Log.e(TAG, "Error loading current month analytics: ${e.message}", e)
+                _errorMessage.value = "Failed to load analytics"
+            }
+        }
+    }
+    
+    /**
+     * Load analytics for a specific month/year (for detail screens)
      */
     fun loadAnalyticsForMonth(year: Int, month: Int) {
         val userId = _userId.value ?: return
@@ -106,7 +144,7 @@ class AnalyticsViewModel @Inject constructor(
                 _isLoading.value = true
                 
                 val analytics = analyticsRepository.getMonthlyAnalytics(userId, year, month)
-                _currentMonthAnalytics.value = analytics
+                _specificMonthAnalytics.value = analytics
                 
                 Log.d(TAG, "Loaded analytics for $year-$month: ${analytics.formattedListeningTime}")
             } catch (e: Exception) {
@@ -119,24 +157,19 @@ class AnalyticsViewModel @Inject constructor(
     }
     
     /**
-     * Load detailed artist analytics for current month
+     * Load detailed artist analytics for specific month/year
      */
-    fun loadArtistAnalytics() {
+    fun loadArtistAnalytics(year: Int, month: Int) {
         val userId = _userId.value ?: return
-        val currentAnalytics = _currentMonthAnalytics.value ?: return
         
         viewModelScope.launch {
             try {
                 _isLoading.value = true
                 
-                val artistAnalytics = analyticsRepository.getArtistAnalytics(
-                    userId, 
-                    currentAnalytics.year, 
-                    currentAnalytics.month
-                )
+                val artistAnalytics = analyticsRepository.getArtistAnalytics(userId, year, month)
                 _artistAnalytics.value = artistAnalytics
                 
-                Log.d(TAG, "Loaded artist analytics: ${artistAnalytics.artists.size} artists")
+                Log.d(TAG, "Loaded artist analytics for $year-$month: ${artistAnalytics.totalArtists} artists")
             } catch (e: Exception) {
                 Log.e(TAG, "Error loading artist analytics: ${e.message}", e)
                 _errorMessage.value = "Failed to load artist analytics"
@@ -147,24 +180,19 @@ class AnalyticsViewModel @Inject constructor(
     }
     
     /**
-     * Load detailed song analytics for current month
+     * Load detailed song analytics for specific month/year
      */
-    fun loadSongAnalytics() {
+    fun loadSongAnalytics(year: Int, month: Int) {
         val userId = _userId.value ?: return
-        val currentAnalytics = _currentMonthAnalytics.value ?: return
         
         viewModelScope.launch {
             try {
                 _isLoading.value = true
                 
-                val songAnalytics = analyticsRepository.getSongAnalytics(
-                    userId, 
-                    currentAnalytics.year, 
-                    currentAnalytics.month
-                )
+                val songAnalytics = analyticsRepository.getSongAnalytics(userId, year, month)
                 _songAnalytics.value = songAnalytics
                 
-                Log.d(TAG, "Loaded song analytics: ${songAnalytics.songs.size} songs")
+                Log.d(TAG, "Loaded song analytics for $year-$month: ${songAnalytics.totalSongs} songs")
             } catch (e: Exception) {
                 Log.e(TAG, "Error loading song analytics: ${e.message}", e)
                 _errorMessage.value = "Failed to load song analytics"
@@ -175,26 +203,16 @@ class AnalyticsViewModel @Inject constructor(
     }
     
     /**
-     * Export current month analytics as CSV
+     * Export analytics for a specific month as CSV
      */
-    fun exportAnalytics() {
+    fun exportAnalytics(year: Int, month: Int) {
         val userId = _userId.value ?: return
-        val currentAnalytics = _currentMonthAnalytics.value ?: return
-        
-        if (!currentAnalytics.hasData) {
-            _errorMessage.value = "No data to export"
-            return
-        }
         
         viewModelScope.launch {
             try {
                 _isExporting.value = true
                 
-                val csvContent = analyticsRepository.exportAnalyticsAsCSV(
-                    userId, 
-                    currentAnalytics.year, 
-                    currentAnalytics.month
-                )
+                val csvContent = analyticsRepository.exportAnalyticsAsCSV(userId, year, month)
                 
                 // Create analytics cache directory if it doesn't exist
                 val analyticsDir = File(context.cacheDir, "analytics")
@@ -203,7 +221,7 @@ class AnalyticsViewModel @Inject constructor(
                 }
                 
                 // Save to file and share
-                val fileName = "purrytify_analytics_${currentAnalytics.year}_${currentAnalytics.month}.csv"
+                val fileName = "purrytify_analytics_${year}_${month}.csv"
                 val file = File(analyticsDir, fileName)
                 file.writeText(csvContent)
                 
@@ -253,9 +271,10 @@ class AnalyticsViewModel @Inject constructor(
     }
     
     /**
-     * Refresh current analytics (for real-time updates)
+     * Refresh all analytics (for real-time updates)
      */
-    fun refreshAnalytics() {
+    fun refreshAllAnalytics() {
+        loadAllAnalytics()
         loadCurrentMonthAnalytics()
     }
     
@@ -273,5 +292,12 @@ class AnalyticsViewModel @Inject constructor(
         val monthName = java.time.Month.of(month).name.lowercase()
             .replaceFirstChar { it.uppercase() }
         return "$monthName $year"
+    }
+    
+    /**
+     * Check if there's any analytics data
+     */
+    fun hasAnyData(): Boolean {
+        return _allMonthlyAnalytics.value.any { it.hasData }
     }
 }

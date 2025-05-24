@@ -69,7 +69,6 @@ fun PurrytifyNavHost(
         }
         
         // Profile Screen
-        // Profile Screen
         composable(Routes.PROFILE) {
             ProfileScreen(
                 onNavigateToLogin = {
@@ -77,14 +76,14 @@ fun PurrytifyNavHost(
                         popUpTo(Routes.HOME) { inclusive = true }
                     }
                 },
-                onNavigateToTimeListened = {
-                    navController.navigate(Routes.TIME_LISTENED)
+                onNavigateToTimeListened = { year, month ->
+                    navController.navigate(Routes.createTimeListenedRoute(year, month))
                 },
-                onNavigateToTopArtists = {
-                    navController.navigate(Routes.TOP_ARTISTS)
+                onNavigateToTopArtists = { year, month ->
+                    navController.navigate(Routes.createTopArtistsRoute(year, month))
                 },
-                onNavigateToTopSongs = {
-                    navController.navigate(Routes.TOP_SONGS)
+                onNavigateToTopSongs = { year, month ->
+                    navController.navigate(Routes.createTopSongsRoute(year, month))
                 },
                 isNetworkAvailable = isNetworkAvailable
             )
@@ -141,21 +140,54 @@ fun PurrytifyNavHost(
             )
         }
         
-        // Analytics Screens
-        composable(Routes.TIME_LISTENED) {
+        // Analytics Screens with year/month parameters
+        composable(
+            route = Routes.TIME_LISTENED,
+            arguments = listOf(
+                navArgument("year") { type = NavType.IntType },
+                navArgument("month") { type = NavType.IntType }
+            )
+        ) { backStackEntry ->
+            val year = backStackEntry.arguments?.getInt("year") ?: 2025
+            val month = backStackEntry.arguments?.getInt("month") ?: 1
+            
             com.example.purrytify.ui.screens.analytics.TimeListenedScreen(
+                year = year,
+                month = month,
                 onBackPressed = { navController.popBackStack() }
             )
         }
         
-        composable(Routes.TOP_ARTISTS) {
+        composable(
+            route = Routes.TOP_ARTISTS,
+            arguments = listOf(
+                navArgument("year") { type = NavType.IntType },
+                navArgument("month") { type = NavType.IntType }
+            )
+        ) { backStackEntry ->
+            val year = backStackEntry.arguments?.getInt("year") ?: 2025
+            val month = backStackEntry.arguments?.getInt("month") ?: 1
+            
             com.example.purrytify.ui.screens.analytics.TopArtistsScreen(
+                year = year,
+                month = month,
                 onBackPressed = { navController.popBackStack() }
             )
         }
         
-        composable(Routes.TOP_SONGS) {
+        composable(
+            route = Routes.TOP_SONGS,
+            arguments = listOf(
+                navArgument("year") { type = NavType.IntType },
+                navArgument("month") { type = NavType.IntType }
+            )
+        ) { backStackEntry ->
+            val year = backStackEntry.arguments?.getInt("year") ?: 2025
+            val month = backStackEntry.arguments?.getInt("month") ?: 1
+            
             com.example.purrytify.ui.screens.analytics.TopSongsScreen(
+                year = year,
+                month = month,
                 onBackPressed = { navController.popBackStack() }
             )
         }

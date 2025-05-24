@@ -29,6 +29,7 @@ import com.example.purrytify.ui.components.EditProfileModalBottomSheet
 import com.example.purrytify.ui.components.LoadingView
 import com.example.purrytify.ui.components.LogoutModalBottomSheet
 import com.example.purrytify.ui.components.NoInternetScreen
+import com.example.purrytify.ui.components.SoundCapsuleSection
 import com.example.purrytify.ui.theme.*
 import com.example.purrytify.util.CountryUtils
 import java.io.File
@@ -40,9 +41,9 @@ fun ProfileScreen(
     onNavigateToLogin: () -> Unit,
     isNetworkAvailable: Boolean,
     viewModel: ProfileViewModel = hiltViewModel(),
-    onNavigateToTimeListened: () -> Unit,
-    onNavigateToTopArtists: () -> Unit,
-    onNavigateToTopSongs: () -> Unit,
+    onNavigateToTimeListened: (Int, Int) -> Unit,
+    onNavigateToTopArtists: (Int, Int) -> Unit,
+    onNavigateToTopSongs: (Int, Int) -> Unit,
 ) {
     // If no network
     if (!isNetworkAvailable) {
@@ -60,7 +61,7 @@ fun ProfileScreen(
     val likedSongsCount by viewModel.likedSongsCount.collectAsState()
     val listenedSongsCount by viewModel.listenedSongsCount.collectAsState()
 
-    val currentMonthAnalytics by viewModel.currentMonthAnalytics.collectAsState()
+    val allMonthlyAnalytics by viewModel.allMonthlyAnalytics.collectAsState()
     val analyticsLoading by viewModel.analyticsLoading.collectAsState()
     
     val context = LocalContext.current
@@ -284,14 +285,14 @@ fun ProfileScreen(
                     
                     Spacer(modifier = Modifier.height(32.dp))
 
-                    // Sound Capsule Section
-                    com.example.purrytify.ui.components.SoundCapsuleSection(
-                        currentMonthAnalytics = currentMonthAnalytics,
+                    // Sound Capsule Section - Updated to show all monthly analytics
+                    SoundCapsuleSection(
+                        allMonthlyAnalytics = allMonthlyAnalytics,
                         isLoading = analyticsLoading,
-                        onTimeListenedClick = onNavigateToTimeListened,
-                        onTopArtistClick = onNavigateToTopArtists,
-                        onTopSongClick = onNavigateToTopSongs,
-                        onExportClick = { viewModel.exportAnalytics() }
+                        onTimeListenedClick = { year, month -> onNavigateToTimeListened(year, month) },
+                        onTopArtistClick = { year, month -> onNavigateToTopArtists(year, month) },
+                        onTopSongClick = { year, month -> onNavigateToTopSongs(year, month) },
+                        onExportClick = { year, month -> viewModel.exportAnalytics(year, month) }
                     )
                     
                     Spacer(modifier = Modifier.height(32.dp))

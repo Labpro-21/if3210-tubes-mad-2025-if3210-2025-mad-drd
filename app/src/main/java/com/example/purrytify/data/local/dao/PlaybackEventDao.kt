@@ -20,6 +20,22 @@ interface PlaybackEventDao {
     @Query("SELECT * FROM playback_event WHERE userId = :userId ORDER BY startTime DESC LIMIT :limit")
     fun getRecentPlaybackEvents(userId: Int, limit: Int = 50): Flow<List<PlaybackEventEntity>>
 
+    /**
+     * Get all months/years that have analytics data for a user
+     */
+    @Query("""
+        SELECT 
+            CAST(strftime('%Y', startTime) AS INTEGER) as year,
+            CAST(strftime('%m', startTime) AS INTEGER) as month,
+            COUNT(*) as totalEvents
+        FROM playback_event 
+        WHERE userId = :userId 
+        GROUP BY year, month
+        HAVING totalEvents > 0
+        ORDER BY year DESC, month DESC
+    """)
+    suspend fun getAllMonthsWithData(userId: Int): List<MonthYearData>
+
     // Analytics queries for monthly data
     
     /**
@@ -93,11 +109,10 @@ interface PlaybackEventDao {
 
     /**
      * Calculate day streak - songs played on consecutive days (2+ days)
-     * This is a simplified version that counts unique days a song was played
+     * Simplified approach that counts unique days a song was played
      */
     @Query("""
-        SELECT songTitle, artistName, 
-               COUNT(DISTINCT DATE(startTime)) as uniqueDays
+        SELECT songTitle, artistName, COUNT(DISTINCT DATE(startTime)) as uniqueDays
         FROM playback_event 
         WHERE userId = :userId 
         AND startTime >= :startDate 
@@ -135,6 +150,12 @@ interface PlaybackEventDao {
     suspend fun hasDataInMonth(userId: Int, startDate: LocalDateTime, endDate: LocalDateTime): Boolean
 
     // Data classes for query results
+    data class MonthYearData(
+        val year: Int,
+        val month: Int,
+        val totalEvents: Int
+    )
+    
     data class TopArtistData(
         val artistName: String,
         val totalDuration: Long,

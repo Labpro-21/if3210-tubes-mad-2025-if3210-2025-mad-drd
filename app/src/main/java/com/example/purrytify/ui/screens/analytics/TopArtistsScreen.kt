@@ -24,20 +24,22 @@ import com.example.purrytify.ui.components.LoadingView
 import com.example.purrytify.ui.theme.*
 
 /**
- * Top Artists screen showing detailed artist analytics
+ * Top Artists screen showing detailed artist analytics for a specific month/year
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TopArtistsScreen(
+    year: Int,
+    month: Int,
     onBackPressed: () -> Unit,
     viewModel: AnalyticsViewModel = hiltViewModel()
 ) {
     val artistAnalytics by viewModel.artistAnalytics.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     
-    // Load artist analytics when screen opens
-    LaunchedEffect(Unit) {
-        viewModel.loadArtistAnalytics()
+    // Load artist analytics for the specific month when screen opens
+    LaunchedEffect(year, month) {
+        viewModel.loadArtistAnalytics(year, month)
     }
     
     Scaffold(
@@ -85,10 +87,10 @@ fun TopArtistsScreen(
                     if (analytics.hasData) {
                         TopArtistsContent(analytics = analytics)
                     } else {
-                        NoDataContent()
+                        NoDataContent(year, month)
                     }
                 } ?: run {
-                    NoDataContent()
+                    NoDataContent(year, month)
                 }
             }
         }
@@ -107,9 +109,9 @@ private fun TopArtistsContent(
     ) {
         Spacer(modifier = Modifier.height(16.dp))
         
-        // Header
+        // Header with month/year
         Text(
-            text = "You listened to ${analytics.artists.size} artists",
+            text = analytics.displayName,
             style = Typography.headlineSmall,
             color = PurrytifyWhite,
             fontWeight = FontWeight.Bold,
@@ -118,8 +120,9 @@ private fun TopArtistsContent(
         
         Spacer(modifier = Modifier.height(8.dp))
         
+        // Artist count info
         Text(
-            text = "this month.",
+            text = "You listened to ${analytics.totalArtists} artists this month.",
             style = Typography.bodyLarge,
             color = PurrytifyLightGray,
             modifier = Modifier.padding(horizontal = 8.dp)
@@ -235,8 +238,13 @@ private fun TopArtistItem(
 
 @Composable
 private fun NoDataContent(
+    year: Int,
+    month: Int,
     modifier: Modifier = Modifier
 ) {
+    val monthName = java.time.Month.of(month).name.lowercase()
+        .replaceFirstChar { it.uppercase() }
+    
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -263,7 +271,7 @@ private fun NoDataContent(
         Spacer(modifier = Modifier.height(8.dp))
         
         Text(
-            text = "Start listening to music to see your top artists",
+            text = "No artists played in $monthName $year",
             style = Typography.bodyLarge,
             color = PurrytifyLightGray,
             textAlign = TextAlign.Center

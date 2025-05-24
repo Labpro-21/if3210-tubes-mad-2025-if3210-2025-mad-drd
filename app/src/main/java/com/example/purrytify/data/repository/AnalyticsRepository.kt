@@ -7,6 +7,7 @@ import com.example.purrytify.domain.model.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.time.LocalDateTime
+import java.time.YearMonth
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -18,6 +19,25 @@ class AnalyticsRepository @Inject constructor(
     private val playbackEventDao: PlaybackEventDao
 ) {
     private val TAG = "AnalyticsRepository"
+
+    /**
+     * Get all months with analytics data for a user
+     */
+    suspend fun getAllMonthsWithData(userId: Int): List<MonthYearData> = withContext(Dispatchers.IO) {
+        try {
+            val monthsData = playbackEventDao.getAllMonthsWithData(userId)
+            monthsData.map { data ->
+                MonthYearData(
+                    year = data.year,
+                    month = data.month,
+                    totalEvents = data.totalEvents
+                )
+            }.sortedWith(compareByDescending<MonthYearData> { it.year }.thenByDescending { it.month })
+        } catch (e: Exception) {
+            Log.e(TAG, "Error getting months with data: ${e.message}", e)
+            emptyList()
+        }
+    }
 
     /**
      * Get monthly analytics for a specific user, year, and month
@@ -61,6 +81,28 @@ class AnalyticsRepository @Inject constructor(
     }
 
     /**
+     * Get analytics for all months with data
+     */
+    suspend fun getAllMonthlyAnalytics(userId: Int): List<MonthlyAnalytics> = withContext(Dispatchers.IO) {
+        try {
+            val monthsWithData = getAllMonthsWithData(userId)
+            val analytics = mutableListOf<MonthlyAnalytics>()
+            
+            for (monthData in monthsWithData) {
+                val monthlyAnalytics = getMonthlyAnalytics(userId, monthData.year, monthData.month)
+                if (monthlyAnalytics.hasData) {
+                    analytics.add(monthlyAnalytics)
+                }
+            }
+            
+            analytics
+        } catch (e: Exception) {
+            Log.e(TAG, "Error getting all monthly analytics: ${e.message}", e)
+            emptyList()
+        }
+    }
+
+    /**
      * Get detailed artist analytics for a specific month
      */
     suspend fun getArtistAnalytics(userId: Int, year: Int, month: Int): ArtistAnalytics = withContext(Dispatchers.IO) {
@@ -69,7 +111,7 @@ class AnalyticsRepository @Inject constructor(
             val endDate = startDate.plusMonths(1)
             
             val artistsData = playbackEventDao.getAllArtistsInMonth(userId, startDate, endDate)
-            val artists = artistsData.map { 
+            val artists = artistsData.take(10).map { 
                 TopArtist(it.artistName, it.totalDuration, it.playCount) 
             }
             
@@ -89,7 +131,7 @@ class AnalyticsRepository @Inject constructor(
             val endDate = startDate.plusMonths(1)
             
             val songsData = playbackEventDao.getAllSongsInMonth(userId, startDate, endDate)
-            val songs = songsData.map { 
+            val songs = songsData.take(10).map { 
                 TopSong(it.songTitle, it.artistName, it.totalDuration, it.playCount) 
             }
             

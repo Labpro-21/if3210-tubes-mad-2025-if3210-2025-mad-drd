@@ -3,6 +3,8 @@ package com.example.purrytify.ui.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Analytics
@@ -19,34 +21,30 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.purrytify.domain.model.MonthlyAnalytics
 import com.example.purrytify.ui.theme.*
-import java.time.format.TextStyle
-import java.util.*
 
 /**
  * Sound Capsule section for the Profile screen
- * Shows current month analytics overview
+ * Shows all monthly analytics data
  */
 @Composable
 fun SoundCapsuleSection(
-    currentMonthAnalytics: MonthlyAnalytics?,
+    allMonthlyAnalytics: List<MonthlyAnalytics>,
     isLoading: Boolean = false,
-    onTimeListenedClick: () -> Unit,
-    onTopArtistClick: () -> Unit,
-    onTopSongClick: () -> Unit,
-    onExportClick: () -> Unit,
+    onTimeListenedClick: (Int, Int) -> Unit,
+    onTopArtistClick: (Int, Int) -> Unit,
+    onTopSongClick: (Int, Int) -> Unit,
+    onExportClick: (Int, Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Card(
-        modifier = modifier
-            .fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
             containerColor = PurrytifyLighterBlack
         ),
         shape = RoundedCornerShape(12.dp)
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp)
-
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp)
         ) {
             // Header
             Row(
@@ -73,28 +71,7 @@ fun SoundCapsuleSection(
                         fontWeight = FontWeight.Bold
                     )
                 }
-                
-                // Export button
-                IconButton(
-                    onClick = onExportClick,
-                    enabled = currentMonthAnalytics?.hasData == true
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.FileDownload,
-                        contentDescription = "Export",
-                        tint = if (currentMonthAnalytics?.hasData == true) PurrytifyGreen else PurrytifyDarkGray
-                    )
-                }
             }
-            
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            // Current month display
-            Text(
-                text = currentMonthAnalytics?.let { "${it.monthName} ${it.year}" } ?: "Current Month",
-                style = Typography.bodyMedium,
-                color = PurrytifyLightGray
-            )
             
             Spacer(modifier = Modifier.height(16.dp))
             
@@ -111,75 +88,41 @@ fun SoundCapsuleSection(
                         modifier = Modifier.size(32.dp)
                     )
                 }
-            } else if (currentMonthAnalytics?.hasData == true) {
-                // Analytics data
-                Column {
-                    // Time listened
-                    AnalyticsItem(
-                        title = "Time listened",
-                        value = currentMonthAnalytics.formattedListeningTime,
-                        onClick = onTimeListenedClick
-                    )
-                    
-                    Spacer(modifier = Modifier.height(12.dp))
-                    
-                    // Top artist
-                    AnalyticsItem(
-                        title = "Top artist",
-                        value = currentMonthAnalytics.topArtist?.name ?: "N/A",
-                        onClick = onTopArtistClick
-                    )
-                    
-                    Spacer(modifier = Modifier.height(12.dp))
-                    
-                    // Top song
-                    AnalyticsItem(
-                        title = "Top song",
-                        value = currentMonthAnalytics.topSong?.title ?: "N/A",
-                        onClick = onTopSongClick
-                    )
-                    
-                    // Day streak (if available)
-                    currentMonthAnalytics.dayStreak?.let { streak ->
-                        Spacer(modifier = Modifier.height(12.dp))
-                        
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = CardDefaults.cardColors(
-                                containerColor = PurrytifyDarkGray.copy(alpha = 0.3f)
-                            ),
-                            shape = RoundedCornerShape(8.dp)
-                        ) {
-                            Column(
-                                modifier = Modifier.padding(12.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                Text(
-                                    text = "You had a ${streak.consecutiveDays}-day streak",
-                                    style = Typography.bodyMedium,
-                                    color = PurrytifyWhite,
-                                    fontWeight = FontWeight.Medium
-                                )
-                                
-                                Spacer(modifier = Modifier.height(4.dp))
-                                
-                                Text(
-                                    text = "${streak.songTitle} by ${streak.artist}",
-                                    style = Typography.bodySmall,
-                                    color = PurrytifyLightGray,
-                                    textAlign = TextAlign.Center
-                                )
-                            }
+            } else if (allMonthlyAnalytics.isNotEmpty()) {
+                // Analytics data - show list of months
+                Text(
+                    text = "Your listening history",
+                    style = Typography.bodyMedium,
+                    color = PurrytifyLightGray,
+                    modifier = Modifier.padding(bottom = 12.dp)
+                )
+                
+                // Limit height and make scrollable
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 400.dp)
+                ) {
+                    LazyColumn(
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(allMonthlyAnalytics) { analytics ->
+                            MonthlyAnalyticsCard(
+                                analytics = analytics,
+                                onTimeListenedClick = { onTimeListenedClick(analytics.year, analytics.month) },
+                                onTopArtistClick = { onTopArtistClick(analytics.year, analytics.month) },
+                                onTopSongClick = { onTopSongClick(analytics.year, analytics.month) },
+                                onExportClick = { onExportClick(analytics.year, analytics.month) }
+                            )
                         }
                     }
                 }
             } else {
                 // No data state
                 Column(
-                    modifier = Modifier.fillMaxWidth().padding(
-                        top = 24.dp,
-                        bottom = 40.dp
-                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 24.dp, bottom = 40.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Icon(
@@ -212,6 +155,116 @@ fun SoundCapsuleSection(
 }
 
 /**
+ * Card for individual monthly analytics
+ */
+@Composable
+private fun MonthlyAnalyticsCard(
+    analytics: MonthlyAnalytics,
+    onTimeListenedClick: () -> Unit,
+    onTopArtistClick: () -> Unit,
+    onTopSongClick: () -> Unit,
+    onExportClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = PurrytifyDarkGray.copy(alpha = 0.3f)
+        ),
+        shape = RoundedCornerShape(8.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            // Month/Year header with export button
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = analytics.displayName,
+                    style = Typography.titleMedium,
+                    color = PurrytifyWhite,
+                    fontWeight = FontWeight.Bold
+                )
+                
+                IconButton(
+                    onClick = onExportClick,
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.FileDownload,
+                        contentDescription = "Export",
+                        tint = PurrytifyGreen,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            // Analytics items
+            AnalyticsItem(
+                title = "Time listened",
+                value = analytics.formattedListeningTime,
+                onClick = onTimeListenedClick
+            )
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            AnalyticsItem(
+                title = "Top artist",
+                value = analytics.topArtist?.name ?: "N/A",
+                onClick = onTopArtistClick
+            )
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            AnalyticsItem(
+                title = "Top song",
+                value = analytics.topSong?.title ?: "N/A",
+                onClick = onTopSongClick
+            )
+            
+            // Day streak (if available)
+            analytics.dayStreak?.let { streak ->
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = PurrytifyGreen.copy(alpha = 0.1f)
+                    ),
+                    shape = RoundedCornerShape(6.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(12.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = "🔥 ${streak.consecutiveDays}-day streak",
+                            style = Typography.bodyMedium,
+                            color = PurrytifyGreen,
+                            fontWeight = FontWeight.Medium
+                        )
+                        
+                        Spacer(modifier = Modifier.height(4.dp))
+                        
+                        Text(
+                            text = "${streak.songTitle} by ${streak.artist}",
+                            style = Typography.bodySmall,
+                            color = PurrytifyLightGray,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
  * Individual analytics item component
  */
 @Composable
@@ -224,9 +277,9 @@ private fun AnalyticsItem(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
+            .clip(RoundedCornerShape(6.dp))
             .clickable { onClick() }
-            .padding(12.dp),
+            .padding(vertical = 4.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -237,11 +290,11 @@ private fun AnalyticsItem(
                 color = PurrytifyLightGray
             )
             
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(2.dp))
             
             Text(
                 text = value,
-                style = Typography.bodyLarge,
+                style = Typography.bodyMedium,
                 color = PurrytifyGreen,
                 fontWeight = FontWeight.Medium
             )
@@ -251,7 +304,7 @@ private fun AnalyticsItem(
             imageVector = Icons.Default.ChevronRight,
             contentDescription = "View details",
             tint = PurrytifyLightGray,
-            modifier = Modifier.size(20.dp)
+            modifier = Modifier.size(16.dp)
         )
     }
 }

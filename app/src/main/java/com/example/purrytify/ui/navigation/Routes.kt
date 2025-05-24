@@ -25,13 +25,26 @@ object Routes {
     // QR Scanner route
     const val QR_SCANNER = "qr_scanner"
     
-    // Analytics routes
-    const val TIME_LISTENED = "analytics/time_listened"
-    const val TOP_ARTISTS = "analytics/top_artists"
-    const val TOP_SONGS = "analytics/top_songs"
+    // Analytics routes with month/year parameters
+    const val TIME_LISTENED = "analytics/time_listened/{year}/{month}"
+    const val TOP_ARTISTS = "analytics/top_artists/{year}/{month}"
+    const val TOP_SONGS = "analytics/top_songs/{year}/{month}"
         
     // Other routes
     const val ADD_SONG = "add_song"
     const val EDIT_SONG = "edit_song/{songId}"
     const val SETTINGS = "settings"
+    
+    // Helper functions to create routes with parameters
+    fun createTimeListenedRoute(year: Int, month: Int): String {
+        return "analytics/time_listened/$year/$month"
+    }
+    
+    fun createTopArtistsRoute(year: Int, month: Int): String {
+        return "analytics/top_artists/$year/$month"
+    }
+    
+    fun createTopSongsRoute(year: Int, month: Int): String {
+        return "analytics/top_songs/$year/$month"
+    }
 }

@@ -19,16 +19,23 @@ import com.example.purrytify.ui.components.LoadingView
 import com.example.purrytify.ui.theme.*
 
 /**
- * Time Listened detail screen showing daily chart and listening statistics
+ * Time Listened detail screen showing daily chart and listening statistics for a specific month
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TimeListenedScreen(
+    year: Int,
+    month: Int,
     onBackPressed: () -> Unit,
     viewModel: AnalyticsViewModel = hiltViewModel()
 ) {
-    val currentMonthAnalytics by viewModel.currentMonthAnalytics.collectAsState()
+    val specificMonthAnalytics by viewModel.specificMonthAnalytics.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
+    
+    // Load analytics for the specific month when screen opens
+    LaunchedEffect(year, month) {
+        viewModel.loadAnalyticsForMonth(year, month)
+    }
     
     Scaffold(
         topBar = {
@@ -71,10 +78,14 @@ fun TimeListenedScreen(
             if (isLoading) {
                 LoadingView()
             } else {
-                currentMonthAnalytics?.let { analytics ->
-                    TimeListenedContent(analytics = analytics)
+                specificMonthAnalytics?.let { analytics ->
+                    if (analytics.hasData) {
+                        TimeListenedContent(analytics = analytics)
+                    } else {
+                        NoDataContent(year, month)
+                    }
                 } ?: run {
-                    NoDataContent()
+                    NoDataContent(year, month)
                 }
             }
         }
@@ -94,7 +105,7 @@ private fun TimeListenedContent(
     ) {
         // Month header
         Text(
-            text = "${analytics.monthName} ${analytics.year}",
+            text = analytics.displayName,
             style = Typography.headlineSmall,
             color = PurrytifyWhite,
             fontWeight = FontWeight.Bold
@@ -156,73 +167,60 @@ private fun TimeListenedContent(
         
         Spacer(modifier = Modifier.height(32.dp))
         
-        // Daily Chart placeholder
+        // Daily Chart
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(200.dp),
+                .height(250.dp),
             colors = CardDefaults.cardColors(
                 containerColor = PurrytifyLighterBlack.copy(alpha = 0.5f)
             ),
             shape = RoundedCornerShape(12.dp)
         ) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp)
             ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = "Daily Chart",
-                        style = Typography.titleMedium,
-                        color = PurrytifyWhite,
-                        fontWeight = FontWeight.Medium
+                Text(
+                    text = "Daily Chart",
+                    style = Typography.titleMedium,
+                    color = PurrytifyWhite,
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier.align(Alignment.CenterHorizontally)
+                )
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                // Chart content
+                if (analytics.dailyData.isNotEmpty()) {
+                    DailyChart(
+                        dailyData = analytics.dailyData,
+                        daysInMonth = daysInMonth,
+                        modifier = Modifier.fillMaxSize()
                     )
-                    
-                    Spacer(modifier = Modifier.height(8.dp))
-                    
-                    Text(
-                        text = "Minutes",
-                        style = Typography.bodySmall,
-                        color = PurrytifyLightGray
-                    )
-                    
-                    // Simple chart representation
-                    if (analytics.dailyData.isNotEmpty()) {
-                        Spacer(modifier = Modifier.height(16.dp))
-                        
-                        Row(
-                            modifier = Modifier.fillMaxWidth(0.8f),
-                            horizontalArrangement = Arrangement.SpaceEvenly
+                } else {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            repeat(7) { day ->
-                                val hasData = analytics.dailyData.size > day
-                                val height = if (hasData) {
-                                    (analytics.dailyData[day].totalDurationMs / (1000 * 60) / 10).toInt().coerceAtMost(40).dp
-                                } else {
-                                    4.dp
-                                }
-                                
-                                Box(
-                                    modifier = Modifier
-                                        .width(8.dp)
-                                        .height(height.coerceAtLeast(4.dp))
-                                        .background(
-                                            color = if (hasData) PurrytifyGreen else PurrytifyDarkGray,
-                                            shape = RoundedCornerShape(4.dp)
-                                        )
-                                )
-                            }
+                            Text(
+                                text = "No daily data available",
+                                style = Typography.bodyMedium,
+                                color = PurrytifyLightGray
+                            )
+                            
+                            Spacer(modifier = Modifier.height(4.dp))
+                            
+                            Text(
+                                text = "Start listening to see daily charts",
+                                style = Typography.bodySmall,
+                                color = PurrytifyDarkGray
+                            )
                         }
-                        
-                        Spacer(modifier = Modifier.height(8.dp))
-                        
-                        Text(
-                            text = "day",
-                            style = Typography.bodySmall,
-                            color = PurrytifyLightGray
-                        )
                     }
                 }
             }
@@ -231,9 +229,103 @@ private fun TimeListenedContent(
 }
 
 @Composable
-private fun NoDataContent(
+private fun DailyChart(
+    dailyData: List<com.example.purrytify.domain.model.DailyListeningData>,
+    daysInMonth: Int,
     modifier: Modifier = Modifier
 ) {
+    // Create a map for quick lookup of daily data
+    val dataMap = dailyData.associateBy { it.dayOfMonth }
+    val maxDuration = dailyData.maxOfOrNull { it.totalDurationMs } ?: 1L
+    
+    Box(
+        modifier = modifier.fillMaxSize()
+    ) {
+        // Y-axis label
+        Text(
+            text = "Minutes",
+            style = Typography.bodySmall,
+            color = PurrytifyLightGray,
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .padding(bottom = 8.dp)
+        )
+        
+        // Chart area
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(start = 8.dp, top = 20.dp, bottom = 20.dp, end = 8.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.Bottom
+        ) {
+            // Show bars for each day of the month
+            val daysToShow = minOf(daysInMonth, 31)
+            
+            repeat(daysToShow) { index ->
+                val day = index + 1
+                val dayData = dataMap[day]
+                val hasData = dayData != null
+                val duration = dayData?.totalDurationMs ?: 0L
+                
+                // Calculate bar height (minimum 4dp, maximum 80% of available height)
+                val heightFraction = if (hasData && maxDuration > 0) {
+                    (duration.toFloat() / maxDuration.toFloat()).coerceIn(0.05f, 0.8f)
+                } else {
+                    0.05f
+                }
+                
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    // Bar
+                    Box(
+                        modifier = Modifier
+                            .width(8.dp)
+                            .fillMaxHeight(heightFraction)
+                            .background(
+                                color = if (hasData) PurrytifyGreen else PurrytifyDarkGray.copy(alpha = 0.3f),
+                                shape = RoundedCornerShape(topStart = 2.dp, topEnd = 2.dp)
+                            )
+                    )
+                    
+                    Spacer(modifier = Modifier.height(4.dp))
+                    
+                    // Day label (show every 5th day to avoid crowding)
+                    if (day % 5 == 1 || day == daysInMonth) {
+                        Text(
+                            text = day.toString(),
+                            style = Typography.bodySmall,
+                            color = PurrytifyLightGray,
+                            fontSize = Typography.bodySmall.fontSize * 0.8f
+                        )
+                    }
+                }
+            }
+        }
+        
+        // X-axis label
+        Text(
+            text = "Day",
+            style = Typography.bodySmall,
+            color = PurrytifyLightGray,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(top = 8.dp)
+        )
+    }
+}
+
+@Composable
+private fun NoDataContent(
+    year: Int,
+    month: Int,
+    modifier: Modifier = Modifier
+) {
+    val monthName = java.time.Month.of(month).name.lowercase()
+        .replaceFirstChar { it.uppercase() }
+    
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -251,7 +343,7 @@ private fun NoDataContent(
         Spacer(modifier = Modifier.height(16.dp))
         
         Text(
-            text = "Start listening to music to see your time analytics",
+            text = "No listening data for $monthName $year",
             style = Typography.bodyLarge,
             color = PurrytifyLightGray,
             textAlign = TextAlign.Center

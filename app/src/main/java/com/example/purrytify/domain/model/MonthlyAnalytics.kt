@@ -5,6 +5,22 @@ package com.example.purrytify.domain.model
  */
 
 /**
+ * Represents a month/year with data
+ */
+data class MonthYearData(
+    val year: Int,
+    val month: Int,
+    val totalEvents: Int
+) {
+    val monthName: String
+        get() = java.time.Month.of(month).name.lowercase()
+            .replaceFirstChar { it.uppercase() }
+            
+    val displayName: String
+        get() = "$monthName $year"
+}
+
+/**
  * Monthly analytics data for a user
  */
 data class MonthlyAnalytics(
@@ -28,6 +44,9 @@ data class MonthlyAnalytics(
     val monthName: String
         get() = java.time.Month.of(month).name.lowercase()
             .replaceFirstChar { it.uppercase() }
+            
+    val displayName: String
+        get() = "$monthName $year"
 }
 
 /**
@@ -82,6 +101,13 @@ data class DailyListeningData(
             val totalMinutes = totalDurationMs / (1000 * 60)
             return "$totalMinutes min"
         }
+        
+    val dayOfMonth: Int
+        get() = try {
+            date.split("-").last().toInt()
+        } catch (e: Exception) {
+            1
+        }
 }
 
 /**
@@ -96,8 +122,14 @@ data class ArtistAnalytics(
         get() = java.time.Month.of(month).name.lowercase()
             .replaceFirstChar { it.uppercase() }
             
+    val displayName: String
+        get() = "$monthName $year"
+            
     val hasData: Boolean
         get() = artists.isNotEmpty()
+        
+    val totalArtists: Int
+        get() = artists.size
 }
 
 /**
@@ -112,6 +144,12 @@ data class SongAnalytics(
         get() = java.time.Month.of(month).name.lowercase()
             .replaceFirstChar { it.uppercase() }
             
+    val displayName: String
+        get() = "$monthName $year"
+            
     val hasData: Boolean
         get() = songs.isNotEmpty()
+        
+    val totalSongs: Int
+        get() = songs.size
 }

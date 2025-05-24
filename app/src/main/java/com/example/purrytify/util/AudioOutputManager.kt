@@ -29,7 +29,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Fixed AudioOutputManager focused on media playback routing
+ * AudioOutputManager focused on media playback routing
  */
 @Singleton
 class AudioOutputManager @Inject constructor(

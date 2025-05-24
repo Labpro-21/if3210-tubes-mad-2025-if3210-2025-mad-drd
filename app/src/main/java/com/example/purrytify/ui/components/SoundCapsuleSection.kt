@@ -23,7 +23,6 @@ import com.example.purrytify.ui.theme.*
 /**
  * Sound Capsule section for the Profile screen
  * Shows all monthly analytics data
- * FIXED: Removed internal LazyColumn to allow parent scrolling
  */
 @Composable
 fun SoundCapsuleSection(
@@ -96,9 +95,8 @@ fun SoundCapsuleSection(
                     modifier = Modifier.padding(bottom = 12.dp)
                 )
                 
-                // FIXED: Removed LazyColumn and height limit, just show all items
                 Column(
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     allMonthlyAnalytics.forEach { analytics ->
                         MonthlyAnalyticsCard(

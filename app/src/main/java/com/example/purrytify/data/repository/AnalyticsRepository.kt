@@ -5,6 +5,8 @@ import com.example.purrytify.data.local.dao.PlaybackEventDao
 import com.example.purrytify.data.local.entity.PlaybackEventEntity
 import com.example.purrytify.domain.model.*
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.time.LocalDateTime
 import java.time.YearMonth
@@ -19,6 +21,9 @@ class AnalyticsRepository @Inject constructor(
     private val playbackEventDao: PlaybackEventDao
 ) {
     private val TAG = "AnalyticsRepository"
+    
+    // Mutex to prevent race conditions when recording sessions
+    private val recordingMutex = Mutex()
 
     /**
      * Get all months with analytics data for a user
@@ -156,23 +161,29 @@ class AnalyticsRepository @Inject constructor(
         artistName: String,
         listeningDurationMs: Long
     ) = withContext(Dispatchers.IO) {
-        try {
-            // Only record if there was actual listening time
-            if (listeningDurationMs > 0) {
-                val event = PlaybackEventEntity(
-                    userId = userId,
-                    songId = songId,
-                    songTitle = songTitle,
-                    artistName = artistName,
-                    startTime = LocalDateTime.now(),
-                    listeningDuration = listeningDurationMs
-                )
-                
-                val eventId = playbackEventDao.insertPlaybackEvent(event)
-                Log.d(TAG, "Recorded listening session: $songTitle by $artistName, duration: ${listeningDurationMs}ms (${listeningDurationMs/1000.0}s), eventId: $eventId")
+        // Use mutex to prevent race conditions when recording sessions
+        recordingMutex.withLock {
+            try {
+                // Only record if there was actual listening time
+                if (listeningDurationMs > 0) {
+                    val event = PlaybackEventEntity(
+                        userId = userId,
+                        songId = songId,
+                        songTitle = songTitle,
+                        artistName = artistName,
+                        startTime = LocalDateTime.now(),
+                        listeningDuration = listeningDurationMs
+                    )
+                    
+                    val eventId = playbackEventDao.insertPlaybackEvent(event)
+                    Log.d(TAG, "Recorded listening session: $songTitle by $artistName, duration: ${listeningDurationMs}ms (${listeningDurationMs/1000.0}s), eventId: $eventId")
+                } else {
+                    Log.d(TAG, "Skipping session recording: duration is ${listeningDurationMs}ms")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error recording listening session: ${e.message}", e)
+                throw e // Re-throw to let caller handle
             }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error recording listening session: ${e.message}", e)
         }
     }
 

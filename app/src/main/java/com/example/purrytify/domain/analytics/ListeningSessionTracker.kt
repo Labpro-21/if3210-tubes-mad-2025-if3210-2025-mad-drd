@@ -5,6 +5,9 @@ import com.example.purrytify.data.repository.AnalyticsRepository
 import com.example.purrytify.domain.model.PlaylistItem
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -19,6 +22,9 @@ class ListeningSessionTracker @Inject constructor(
 ) {
     private val TAG = "ListeningSessionTracker"
     
+    // Mutex to prevent race conditions when ending sessions
+    private val sessionMutex = Mutex()
+    
     // Current session data
     private var currentSessionStartTime: Long = 0L
     private var currentSessionItem: PlaylistItem? = null
@@ -32,16 +38,21 @@ class ListeningSessionTracker @Inject constructor(
     fun startSession(item: PlaylistItem, userId: Int) {
         Log.d(TAG, "Starting session for: ${item.title} by ${item.artist}")
         
-        // If there was a previous session, end it first
-        endCurrentSession()
-        
-        currentSessionItem = item
-        currentUserId = userId
-        currentSessionStartTime = System.currentTimeMillis()
-        totalListeningTimeMs = 0L // Reset to 0 milliseconds
-        isSessionActive = true
-        
-        Log.d(TAG, "Session started at: $currentSessionStartTime (timestamp)")
+        // Use runBlocking to ensure session ending completes before starting new session
+        runBlocking {
+            sessionMutex.withLock {
+                // If there was a previous session, end it first (synchronously)
+                endCurrentSessionInternal()
+                
+                currentSessionItem = item
+                currentUserId = userId
+                currentSessionStartTime = System.currentTimeMillis()
+                totalListeningTimeMs = 0L // Reset to 0 milliseconds
+                isSessionActive = true
+                
+                Log.d(TAG, "Session started at: $currentSessionStartTime (timestamp)")
+            }
+        }
     }
     
     /**
@@ -76,6 +87,18 @@ class ListeningSessionTracker @Inject constructor(
      * End the current session and record analytics
      */
     fun endCurrentSession() {
+        // Use runBlocking to make this synchronous and prevent race conditions
+        runBlocking {
+            sessionMutex.withLock {
+                endCurrentSessionInternal()
+            }
+        }
+    }
+    
+    /**
+     * Internal method to end session (must be called within sessionMutex)
+     */
+    private suspend fun endCurrentSessionInternal() {
         val item = currentSessionItem ?: return
         val userId = currentUserId ?: return
         
@@ -93,22 +116,20 @@ class ListeningSessionTracker @Inject constructor(
             Log.d(TAG, "Ending session for: ${item.title}")
             Log.d(TAG, "Total listening time: ${totalListeningTimeMs}ms (${totalListeningTimeMs/1000.0} seconds, ${totalListeningTimeMs/60000.0} minutes)")
             
-            externalScope.launch {
-                try {
-                    analyticsRepository.recordListeningSession(
-                        userId = userId,
-                        songId = when (item) {
-                            is PlaylistItem.LocalSong -> item.id
-                            is PlaylistItem.OnlineSong -> item.originalId
-                        },
-                        songTitle = item.title,
-                        artistName = item.artist,
-                        listeningDurationMs = totalListeningTimeMs
-                    )
-                    Log.d(TAG, "Successfully recorded listening session with duration: ${totalListeningTimeMs}ms")
-                } catch (e: Exception) {
-                    Log.e(TAG, "Error recording listening session: ${e.message}", e)
-                }
+            try {
+                analyticsRepository.recordListeningSession(
+                    userId = userId,
+                    songId = when (item) {
+                        is PlaylistItem.LocalSong -> item.id
+                        is PlaylistItem.OnlineSong -> item.originalId
+                    },
+                    songTitle = item.title,
+                    artistName = item.artist,
+                    listeningDurationMs = totalListeningTimeMs
+                )
+                Log.d(TAG, "Successfully recorded listening session with duration: ${totalListeningTimeMs}ms")
+            } catch (e: Exception) {
+                Log.e(TAG, "Error recording listening session: ${e.message}", e)
             }
         } else {
             Log.d(TAG, "Session too short (${totalListeningTimeMs}ms), not recording")

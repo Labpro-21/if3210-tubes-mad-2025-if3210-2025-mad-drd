@@ -78,9 +78,9 @@ class PlayerBridge @Inject constructor(
     init {
         // Set up callbacks from PlayerRepository
         playerRepository.onPlaybackEnded = {
-            Log.d(TAG, "Playback ended, notifying analytics and playing next song")
+            Log.d(TAG, "Playback ended, notifying analytics and moving to next song")
             listeningSessionTracker.onSongCompleted()
-            next()
+            nextSongNaturally()
         }
         
         playerRepository.onPlaybackError = { error ->
@@ -238,7 +238,28 @@ class PlayerBridge @Inject constructor(
     }
     
     /**
-     * Play next song in queue
+     * Move to next song naturally (after current song completes)
+     * This does NOT end the current session since it was already ended by onSongCompleted()
+     */
+    private fun nextSongNaturally() {
+        Log.d(TAG, "Moving to next song naturally (no session management)")
+        
+        val currentQueue = _queue.value
+        val currentIdx = _currentIndex.value
+        
+        if (currentQueue.isNotEmpty()) {
+            val nextIndex = (currentIdx + 1) % currentQueue.size
+            _currentIndex.value = nextIndex
+            Log.d(TAG, "Playing next song naturally: index $nextIndex")
+            
+            // Play the next item (this will start a new session automatically)
+            playItem(currentQueue[nextIndex])
+        }
+    }
+    
+    /**
+     * Play next song (user-initiated)
+     * This DOES end the current session first since it's a user skip
      */
     fun next() {
         Log.d(TAG, "Next button pressed - ending current session and switching to next song")
@@ -260,8 +281,8 @@ class PlayerBridge @Inject constructor(
     }
     
     /**
-     * Play previous song in queue
-     * FIXED: Properly end current session before switching
+     * Play previous song (user-initiated)
+     * This DOES end the current session first since it's a user skip
      */
     fun previous() {
         Log.d(TAG, "Previous button pressed - ending current session and switching to previous song")

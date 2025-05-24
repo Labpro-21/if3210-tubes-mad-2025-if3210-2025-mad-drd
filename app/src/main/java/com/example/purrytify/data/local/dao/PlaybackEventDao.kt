@@ -15,7 +15,8 @@ import java.time.LocalDate
  */
 @Dao
 interface PlaybackEventDao {
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    // This prevents race conditions where one event might overwrite another
+    @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertPlaybackEvent(event: PlaybackEventEntity): Long
 
     @Query("SELECT * FROM playback_event WHERE userId = :userId ORDER BY startTime DESC LIMIT :limit")
@@ -111,7 +112,7 @@ interface PlaybackEventDao {
     suspend fun getAllSongsInMonth(userId: Int, startDate: LocalDateTime, endDate: LocalDateTime): List<TopSongData>
 
     /**
-     * Get song play dates for streak calculation - FIXED VERSION
+     * Get song play dates for streak calculation
      * Simple query that returns song-date combinations
      */
     @Query("""

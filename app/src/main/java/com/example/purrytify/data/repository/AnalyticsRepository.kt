@@ -49,13 +49,13 @@ class AnalyticsRepository @Inject constructor(
             
             Log.d(TAG, "Getting analytics for user $userId, $year-$month")
             
-            val totalListeningTime = playbackEventDao.getTotalListeningTimeInMonth(userId, startDate, endDate) ?: 0L
+            val totalListeningTime = playbackEventDao.getTotalListeningTimeInMonth(userId, startDate, endDate)
             val topArtistData = playbackEventDao.getTopArtistInMonth(userId, startDate, endDate)
             val topSongData = playbackEventDao.getTopSongInMonth(userId, startDate, endDate)
             val dayStreakData = playbackEventDao.getLongestDayStreakInMonth(userId, startDate, endDate)
             val dailyData = playbackEventDao.getDailyListeningDataInMonth(userId, startDate, endDate)
             
-            Log.d(TAG, "Analytics results - Time: ${totalListeningTime}ms, TopArtist: ${topArtistData?.artistName}, TopSong: ${topSongData?.songTitle}")
+            Log.d(TAG, "Analytics results - Time: ${totalListeningTime}ms (${totalListeningTime/60000.0} minutes), TopArtist: ${topArtistData?.artistName}, TopSong: ${topSongData?.songTitle}")
             
             MonthlyAnalytics(
                 year = year,
@@ -95,6 +95,7 @@ class AnalyticsRepository @Inject constructor(
                 }
             }
             
+            Log.d(TAG, "Loaded analytics for ${analytics.size} months")
             analytics
         } catch (e: Exception) {
             Log.e(TAG, "Error getting all monthly analytics: ${e.message}", e)
@@ -115,6 +116,7 @@ class AnalyticsRepository @Inject constructor(
                 TopArtist(it.artistName, it.totalDuration, it.playCount) 
             }
             
+            Log.d(TAG, "Artist analytics for $year-$month: ${artists.size} artists")
             ArtistAnalytics(artists, year, month)
         } catch (e: Exception) {
             Log.e(TAG, "Error getting artist analytics: ${e.message}", e)
@@ -135,6 +137,7 @@ class AnalyticsRepository @Inject constructor(
                 TopSong(it.songTitle, it.artistName, it.totalDuration, it.playCount) 
             }
             
+            Log.d(TAG, "Song analytics for $year-$month: ${songs.size} songs")
             SongAnalytics(songs, year, month)
         } catch (e: Exception) {
             Log.e(TAG, "Error getting song analytics: ${e.message}", e)
@@ -166,7 +169,7 @@ class AnalyticsRepository @Inject constructor(
                 )
                 
                 val eventId = playbackEventDao.insertPlaybackEvent(event)
-                Log.d(TAG, "Recorded listening session: $songTitle by $artistName, duration: ${listeningDurationMs}ms, eventId: $eventId")
+                Log.d(TAG, "Recorded listening session: $songTitle by $artistName, duration: ${listeningDurationMs}ms (${listeningDurationMs/1000.0}s), eventId: $eventId")
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error recording listening session: ${e.message}", e)
@@ -221,7 +224,7 @@ class AnalyticsRepository @Inject constructor(
             csv.appendLine("TOP ARTISTS")
             csv.appendLine("Rank,Artist,Total Time,Play Count")
             artistAnalytics.artists.forEachIndexed { index, artist ->
-                csv.appendLine("${index + 1},${artist.name},${artist.formattedDuration},${artist.playCount}")
+                csv.appendLine("${index + 1},\"${artist.name}\",${artist.formattedDuration},${artist.playCount}")
             }
             csv.appendLine()
             
@@ -229,13 +232,14 @@ class AnalyticsRepository @Inject constructor(
             csv.appendLine("TOP SONGS")
             csv.appendLine("Rank,Song,Artist,Total Time,Play Count")
             songAnalytics.songs.forEachIndexed { index, song ->
-                csv.appendLine("${index + 1},${song.title},${song.artist},${song.formattedDuration},${song.playCount}")
+                csv.appendLine("${index + 1},\"${song.title}\",\"${song.artist}\",${song.formattedDuration},${song.playCount}")
             }
             
+            Log.d(TAG, "Generated CSV export with ${csv.length} characters")
             csv.toString()
         } catch (e: Exception) {
             Log.e(TAG, "Error exporting analytics as CSV: ${e.message}", e)
-            "Error generating analytics report"
+            "Error generating analytics report: ${e.message}"
         }
     }
 }

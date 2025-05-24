@@ -12,11 +12,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.purrytify.domain.model.MonthlyAnalytics
 import com.example.purrytify.ui.components.LoadingView
 import com.example.purrytify.ui.theme.*
+import kotlin.math.max
 
 /**
  * Time Listened detail screen showing daily chart and listening statistics for a specific month
@@ -171,7 +173,7 @@ private fun TimeListenedContent(
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(250.dp),
+                .height(320.dp), // Increased height to accommodate labels
             colors = CardDefaults.cardColors(
                 containerColor = PurrytifyLighterBlack.copy(alpha = 0.5f)
             ),
@@ -190,7 +192,7 @@ private fun TimeListenedContent(
                     modifier = Modifier.align(Alignment.CenterHorizontally)
                 )
                 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(16.dp))
                 
                 // Chart content
                 if (analytics.dailyData.isNotEmpty()) {
@@ -236,12 +238,138 @@ private fun DailyChart(
 ) {
     // Create a map for quick lookup of daily data
     val dataMap = dailyData.associateBy { it.dayOfMonth }
-    val maxDuration = dailyData.maxOfOrNull { it.totalDurationMs } ?: 1L
+    val maxDurationMs = dailyData.maxOfOrNull { it.totalDurationMs } ?: 1L
+    val maxMinutes = max(1, (maxDurationMs / (1000 * 60)).toInt())
+    
+    // Calculate Y-axis tick values
+    val yAxisTicks = when {
+        maxMinutes <= 5 -> listOf(0, 1, 2, 3, 4, 5)
+        maxMinutes <= 10 -> listOf(0, 2, 4, 6, 8, 10)
+        maxMinutes <= 30 -> listOf(0, 5, 10, 15, 20, 25, 30)
+        maxMinutes <= 60 -> listOf(0, 10, 20, 30, 40, 50, 60)
+        maxMinutes <= 120 -> listOf(0, 20, 40, 60, 80, 100, 120)
+        else -> {
+            val step = (maxMinutes / 5) / 10 * 10 // Round to nearest 10
+            (0..5).map { it * step }
+        }
+    }
+    
+    val actualMaxMinutes = yAxisTicks.maxOrNull() ?: maxMinutes
     
     Box(
         modifier = modifier.fillMaxSize()
     ) {
-        // Y-axis label
+        Row(
+            modifier = Modifier.fillMaxSize()
+        ) {
+            // Y-axis with labels
+            Column(
+                modifier = Modifier
+                    .width(40.dp)
+                    .fillMaxHeight(),
+                verticalArrangement = Arrangement.SpaceBetween
+            ) {
+                // Y-axis labels (from top to bottom)
+                yAxisTicks.reversed().forEach { tick ->
+                    Text(
+                        text = "$tick",
+                        style = Typography.bodySmall,
+                        color = PurrytifyLightGray,
+                        fontSize = Typography.bodySmall.fontSize * 0.8f,
+                        modifier = Modifier.height(16.dp)
+                    )
+                }
+            }
+            
+            // Chart area
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+            ) {
+                // Chart bars area
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .padding(start = 8.dp, end = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.Bottom
+                ) {
+                    // Show bars for each day of the month
+                    val daysToShow = minOf(daysInMonth, 31)
+                    
+                    repeat(daysToShow) { index ->
+                        val day = index + 1
+                        val dayData = dataMap[day]
+                        val hasData = dayData != null
+                        val durationMinutes = (dayData?.totalDurationMs ?: 0L) / (1000 * 60)
+                        
+                        // Calculate bar height (minimum 2dp for visibility, maximum based on data)
+                        val heightFraction = if (hasData && actualMaxMinutes > 0) {
+                            (durationMinutes.toFloat() / actualMaxMinutes.toFloat()).coerceIn(0.02f, 1.0f)
+                        } else {
+                            0.02f
+                        }
+                        
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            // Bar
+                            Box(
+                                modifier = Modifier
+                                    .width(8.dp)
+                                    .fillMaxHeight(heightFraction)
+                                    .background(
+                                        color = if (hasData) PurrytifyGreen else PurrytifyDarkGray.copy(alpha = 0.3f),
+                                        shape = RoundedCornerShape(topStart = 2.dp, topEnd = 2.dp)
+                                    )
+                            )
+                        }
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(12.dp)) // Increased spacing
+                
+                // X-axis day labels - FIXED: Prevent text wrapping
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(24.dp) // Fixed height to prevent wrapping
+                        .padding(start = 8.dp, end = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    val daysToShow = minOf(daysInMonth, 31)
+                    
+                    repeat(daysToShow) { index ->
+                        val day = index + 1
+                        
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight(), // Use full available height
+                            contentAlignment = Alignment.Center
+                        ) {
+                            // Show every 5th day or first/last day to avoid crowding
+                            if (day % 5 == 1 || day == daysInMonth) {
+                                Text(
+                                    text = day.toString(),
+                                    style = Typography.bodySmall,
+                                    color = PurrytifyLightGray,
+                                    fontSize = Typography.bodySmall.fontSize * 0.75f, // Slightly smaller
+                                    textAlign = TextAlign.Center,
+                                    maxLines = 1, // Prevent wrapping
+                                    overflow = TextOverflow.Clip // Clip instead of ellipsis
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Axis labels
         Text(
             text = "Minutes",
             style = Typography.bodySmall,
@@ -251,61 +379,6 @@ private fun DailyChart(
                 .padding(bottom = 8.dp)
         )
         
-        // Chart area
-        Row(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(start = 8.dp, top = 20.dp, bottom = 20.dp, end = 8.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.Bottom
-        ) {
-            // Show bars for each day of the month
-            val daysToShow = minOf(daysInMonth, 31)
-            
-            repeat(daysToShow) { index ->
-                val day = index + 1
-                val dayData = dataMap[day]
-                val hasData = dayData != null
-                val duration = dayData?.totalDurationMs ?: 0L
-                
-                // Calculate bar height (minimum 4dp, maximum 80% of available height)
-                val heightFraction = if (hasData && maxDuration > 0) {
-                    (duration.toFloat() / maxDuration.toFloat()).coerceIn(0.05f, 0.8f)
-                } else {
-                    0.05f
-                }
-                
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.weight(1f)
-                ) {
-                    // Bar
-                    Box(
-                        modifier = Modifier
-                            .width(8.dp)
-                            .fillMaxHeight(heightFraction)
-                            .background(
-                                color = if (hasData) PurrytifyGreen else PurrytifyDarkGray.copy(alpha = 0.3f),
-                                shape = RoundedCornerShape(topStart = 2.dp, topEnd = 2.dp)
-                            )
-                    )
-                    
-                    Spacer(modifier = Modifier.height(4.dp))
-                    
-                    // Day label (show every 5th day to avoid crowding)
-                    if (day % 5 == 1 || day == daysInMonth) {
-                        Text(
-                            text = day.toString(),
-                            style = Typography.bodySmall,
-                            color = PurrytifyLightGray,
-                            fontSize = Typography.bodySmall.fontSize * 0.8f
-                        )
-                    }
-                }
-            }
-        }
-        
-        // X-axis label
         Text(
             text = "Day",
             style = Typography.bodySmall,

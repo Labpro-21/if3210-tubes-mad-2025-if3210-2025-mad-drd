@@ -3,6 +3,7 @@ package com.example.purrytify.ui.screens.analytics
 import android.content.Context
 import android.content.Intent
 import android.util.Log
+import android.widget.Toast
 import androidx.core.content.FileProvider
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -212,26 +213,34 @@ class AnalyticsViewModel @Inject constructor(
             try {
                 _isExporting.value = true
                 
+                Log.d(TAG, "Starting CSV export for $year-$month")
+                
                 val csvContent = analyticsRepository.exportAnalyticsAsCSV(userId, year, month)
                 
                 // Create analytics cache directory if it doesn't exist
                 val analyticsDir = File(context.cacheDir, "analytics")
                 if (!analyticsDir.exists()) {
-                    analyticsDir.mkdirs()
+                    val created = analyticsDir.mkdirs()
+                    Log.d(TAG, "Analytics directory created: $created")
                 }
                 
                 // Save to file and share
-                val fileName = "purrytify_analytics_${year}_${month}.csv"
+                val fileName = "purrytify_analytics_${year}_${String.format("%02d", month)}.csv"
                 val file = File(analyticsDir, fileName)
                 file.writeText(csvContent)
+                
+                Log.d(TAG, "CSV file created at: ${file.absolutePath}, size: ${file.length()} bytes")
                 
                 // Share the file
                 shareAnalyticsFile(file)
                 
-                Log.d(TAG, "Analytics exported to: ${file.absolutePath}")
+                // Show success message
+                showToast("Analytics exported successfully!")
+                
             } catch (e: Exception) {
                 Log.e(TAG, "Error exporting analytics: ${e.message}", e)
-                _errorMessage.value = "Failed to export analytics"
+                _errorMessage.value = "Failed to export analytics: ${e.message}"
+                showToast("Failed to export analytics")
             } finally {
                 _isExporting.value = false
             }
@@ -263,10 +272,26 @@ class AnalyticsViewModel @Inject constructor(
             
             context.startActivity(chooser)
             
-            Log.d(TAG, "Shared analytics file")
+            Log.d(TAG, "Shared analytics file successfully")
         } catch (e: Exception) {
             Log.e(TAG, "Error sharing analytics file: ${e.message}", e)
             _errorMessage.value = "Failed to share analytics"
+            showToast("Failed to share analytics file")
+        }
+    }
+    
+    /**
+     * Show toast message on main thread
+     */
+    private fun showToast(message: String) {
+        viewModelScope.launch {
+            try {
+                android.os.Handler(android.os.Looper.getMainLooper()).post {
+                    Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error showing toast: ${e.message}", e)
+            }
         }
     }
     

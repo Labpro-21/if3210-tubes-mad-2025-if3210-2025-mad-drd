@@ -189,16 +189,21 @@ private fun MonthlyAnalyticsCard(
                     fontWeight = FontWeight.Bold
                 )
                 
-                IconButton(
-                    onClick = onExportClick,
-                    modifier = Modifier.size(32.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.FileDownload,
-                        contentDescription = "Export",
-                        tint = PurrytifyGreen,
-                        modifier = Modifier.size(16.dp)
-                    )
+                // Export button with better feedback
+                Box {
+                    IconButton(
+                        onClick = {
+                            onExportClick()
+                        },
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.FileDownload,
+                            contentDescription = "Export analytics for ${analytics.displayName}",
+                            tint = PurrytifyGreen,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
                 }
             }
             
@@ -239,7 +244,7 @@ private fun MonthlyAnalyticsCard(
                     shape = RoundedCornerShape(6.dp)
                 ) {
                     Column(
-                        modifier = Modifier.padding(12.dp),
+                        modifier = Modifier.padding(12.dp).fillMaxWidth(),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(

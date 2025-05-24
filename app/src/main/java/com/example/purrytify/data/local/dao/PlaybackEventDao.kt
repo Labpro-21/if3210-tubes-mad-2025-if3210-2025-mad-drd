@@ -7,6 +7,7 @@ import androidx.room.Query
 import com.example.purrytify.data.local.entity.PlaybackEventEntity
 import kotlinx.coroutines.flow.Flow
 import java.time.LocalDateTime
+import java.time.LocalDate
 
 /**
  * Data Access Object for PlaybackEvent entity
@@ -42,12 +43,12 @@ interface PlaybackEventDao {
      * Get total listening time for a specific month
      */
     @Query("""
-        SELECT SUM(listeningDuration) FROM playback_event 
+        SELECT COALESCE(SUM(listeningDuration), 0) FROM playback_event 
         WHERE userId = :userId 
         AND startTime >= :startDate 
         AND startTime < :endDate
     """)
-    suspend fun getTotalListeningTimeInMonth(userId: Int, startDate: LocalDateTime, endDate: LocalDateTime): Long?
+    suspend fun getTotalListeningTimeInMonth(userId: Int, startDate: LocalDateTime, endDate: LocalDateTime): Long
 
     /**
      * Get top artist for a specific month based on total listening duration
@@ -81,6 +82,7 @@ interface PlaybackEventDao {
 
     /**
      * Get all artists for a specific month with their listening data
+     * Ordered by total listening duration (not play count)
      */
     @Query("""
         SELECT artistName, SUM(listeningDuration) as totalDuration, COUNT(*) as playCount
@@ -95,6 +97,7 @@ interface PlaybackEventDao {
 
     /**
      * Get all songs for a specific month with their listening data
+     * Ordered by total listening duration (not play count)
      */
     @Query("""
         SELECT songTitle, artistName, SUM(listeningDuration) as totalDuration, COUNT(*) as playCount
@@ -108,21 +111,22 @@ interface PlaybackEventDao {
     suspend fun getAllSongsInMonth(userId: Int, startDate: LocalDateTime, endDate: LocalDateTime): List<TopSongData>
 
     /**
-     * Calculate day streak - songs played on consecutive days (2+ days)
-     * Simplified approach that counts unique days a song was played
+     * Get song play dates for streak calculation - FIXED VERSION
+     * Simple query that returns song-date combinations
      */
     @Query("""
-        SELECT songTitle, artistName, COUNT(DISTINCT DATE(startTime)) as uniqueDays
+        SELECT 
+            songTitle,
+            artistName,
+            DATE(startTime) as playDate
         FROM playback_event 
         WHERE userId = :userId 
         AND startTime >= :startDate 
         AND startTime < :endDate
-        GROUP BY songTitle, artistName 
-        HAVING uniqueDays >= 2
-        ORDER BY uniqueDays DESC 
-        LIMIT 1
+        GROUP BY songTitle, artistName, DATE(startTime)
+        ORDER BY songTitle, artistName, DATE(startTime)
     """)
-    suspend fun getLongestDayStreakInMonth(userId: Int, startDate: LocalDateTime, endDate: LocalDateTime): DayStreakData?
+    suspend fun getSongPlayDatesInMonth(userId: Int, startDate: LocalDateTime, endDate: LocalDateTime): List<SongPlayDateData>
 
     /**
      * Get daily listening data for a specific month (for charts)
@@ -148,6 +152,67 @@ interface PlaybackEventDao {
         AND startTime < :endDate
     """)
     suspend fun hasDataInMonth(userId: Int, startDate: LocalDateTime, endDate: LocalDateTime): Boolean
+
+    /**
+    * Extension function to calculate longest day streak
+    * This replaces the complex SQL query with Kotlin logic
+    */
+    suspend fun getLongestDayStreakInMonth(
+        userId: Int, 
+        startDate: LocalDateTime, 
+        endDate: LocalDateTime
+    ): DayStreakData? {
+        val songPlayDates = getSongPlayDatesInMonth(userId, startDate, endDate)
+        
+        if (songPlayDates.isEmpty()) return null
+        
+        // Group by song
+        val songGroups = songPlayDates.groupBy { "${it.songTitle}|${it.artistName}" }
+        
+        var longestStreak = 0
+        var longestStreakSong: Pair<String, String>? = null
+        
+        songGroups.forEach { (songKey, playDates) ->
+            val (songTitle, artistName) = songKey.split("|", limit = 2)
+            
+            // Convert dates to LocalDate and sort
+            val dates = playDates.map { LocalDate.parse(it.playDate) }.sorted()
+            
+            // Calculate longest consecutive streak
+            if (dates.isNotEmpty()) {
+                var currentStreak = 1
+                var maxStreak = 1
+                
+                for (i in 1 until dates.size) {
+                    val currentDate = dates[i]
+                    val previousDate = dates[i - 1]
+                    
+                    if (currentDate == previousDate.plusDays(1)) {
+                        // Consecutive day
+                        currentStreak++
+                        maxStreak = maxOf(maxStreak, currentStreak)
+                    } else {
+                        // Non-consecutive, reset streak
+                        currentStreak = 1
+                    }
+                }
+                
+                // Only consider streaks of 2+ days
+                if (maxStreak >= 2 && maxStreak > longestStreak) {
+                    longestStreak = maxStreak
+                    longestStreakSong = songTitle to artistName
+                }
+            }
+        }
+        
+        return longestStreakSong?.let { (title, artist) ->
+            PlaybackEventDao.DayStreakData(
+                songTitle = title,
+                artistName = artist,
+                uniqueDays = longestStreak
+            )
+        }
+    }
 
     // Data classes for query results
     data class MonthYearData(
@@ -178,5 +243,11 @@ interface PlaybackEventDao {
     data class DailyListeningData(
         val date: String,
         val totalDuration: Long
+    )
+
+    data class SongPlayDateData(
+        val songTitle: String,
+        val artistName: String,
+        val playDate: String
     )
 }

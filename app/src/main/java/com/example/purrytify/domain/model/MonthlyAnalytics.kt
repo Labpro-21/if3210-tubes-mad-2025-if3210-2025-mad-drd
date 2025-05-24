@@ -38,7 +38,21 @@ data class MonthlyAnalytics(
     val formattedListeningTime: String
         get() {
             val totalMinutes = totalListeningTimeMs / (1000 * 60)
-            return "$totalMinutes minutes"
+            return when {
+                totalMinutes == 0L -> "0 minutes"
+                totalMinutes == 1L -> "1 minute"
+                totalMinutes < 60 -> "$totalMinutes minutes"
+                else -> {
+                    val hours = totalMinutes / 60
+                    val remainingMinutes = totalMinutes % 60
+                    when {
+                        hours == 1L && remainingMinutes == 0L -> "1 hour"
+                        hours == 1L -> "1 hour $remainingMinutes min"
+                        remainingMinutes == 0L -> "$hours hours"
+                        else -> "$hours hours $remainingMinutes min"
+                    }
+                }
+            }
         }
 
     val monthName: String
@@ -60,7 +74,21 @@ data class TopArtist(
     val formattedDuration: String
         get() {
             val totalMinutes = totalDurationMs / (1000 * 60)
-            return "$totalMinutes min"
+            return when {
+                totalMinutes == 0L -> "0 min"
+                totalMinutes == 1L -> "1 min"
+                totalMinutes < 60 -> "$totalMinutes min"
+                else -> {
+                    val hours = totalMinutes / 60
+                    val remainingMinutes = totalMinutes % 60
+                    when {
+                        hours == 1L && remainingMinutes == 0L -> "1 hr"
+                        hours == 1L -> "1h ${remainingMinutes}m"
+                        remainingMinutes == 0L -> "${hours}h"
+                        else -> "${hours}h ${remainingMinutes}m"
+                    }
+                }
+            }
         }
 }
 
@@ -76,7 +104,21 @@ data class TopSong(
     val formattedDuration: String
         get() {
             val totalMinutes = totalDurationMs / (1000 * 60)
-            return "$totalMinutes min"
+            return when {
+                totalMinutes == 0L -> "0 min"
+                totalMinutes == 1L -> "1 min"
+                totalMinutes < 60 -> "$totalMinutes min"
+                else -> {
+                    val hours = totalMinutes / 60
+                    val remainingMinutes = totalMinutes % 60
+                    when {
+                        hours == 1L && remainingMinutes == 0L -> "1 hr"
+                        hours == 1L -> "1h ${remainingMinutes}m"
+                        remainingMinutes == 0L -> "${hours}h"
+                        else -> "${hours}h ${remainingMinutes}m"
+                    }
+                }
+            }
         }
 }
 
@@ -99,7 +141,11 @@ data class DailyListeningData(
     val formattedDuration: String
         get() {
             val totalMinutes = totalDurationMs / (1000 * 60)
-            return "$totalMinutes min"
+            return when {
+                totalMinutes == 0L -> "0 min"
+                totalMinutes == 1L -> "1 min"
+                else -> "$totalMinutes min"
+            }
         }
         
     val dayOfMonth: Int

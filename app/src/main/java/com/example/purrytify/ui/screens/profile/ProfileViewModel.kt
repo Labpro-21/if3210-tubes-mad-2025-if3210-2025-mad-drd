@@ -9,6 +9,7 @@ import com.example.purrytify.data.repository.AuthRepository
 import com.example.purrytify.data.repository.ProfileRepository
 import com.example.purrytify.domain.model.MonthlyAnalytics
 import com.example.purrytify.domain.player.PlayerBridge
+import com.example.purrytify.util.ExportManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -27,7 +28,8 @@ class ProfileViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val analyticsRepository: AnalyticsRepository,
     private val userPreferences: UserPreferences,
-    private val playerBridge: PlayerBridge
+    private val playerBridge: PlayerBridge,
+    private val exportManager: ExportManager
 ) : ViewModel() {
     
     private val TAG = "ProfileViewModel"
@@ -72,7 +74,9 @@ class ProfileViewModel @Inject constructor(
     private val _userId = MutableStateFlow<Int?>(null)
     val userId: StateFlow<Int?> = _userId.asStateFlow()
 
-    
+    // Export loading state
+    private val _isExporting = MutableStateFlow(false)
+    val isExporting: StateFlow<Boolean> = _isExporting.asStateFlow()
     
     init {
         // Load user ID and analytics
@@ -293,12 +297,22 @@ class ProfileViewModel @Inject constructor(
         
         viewModelScope.launch {
             try {
-                val csvContent = analyticsRepository.exportAnalyticsAsCSV(userId, year, month)
+                _isExporting.value = true
                 
-                Log.d(TAG, "Analytics CSV generated successfully for $year-$month (${csvContent.length} characters)")
-                // Note: Full file sharing functionality is available in AnalyticsViewModel
+                Log.d(TAG, "Starting analytics export for $year-$month")
+                
+                val success = exportManager.exportAndShareAnalytics(userId, year, month)
+                
+                if (success) {
+                    Log.d(TAG, "Analytics export completed successfully")
+                } else {
+                    Log.e(TAG, "Analytics export failed")
+                }
+                
             } catch (e: Exception) {
                 Log.e(TAG, "Error exporting analytics: ${e.message}", e)
+            } finally {
+                _isExporting.value = false
             }
         }
     }

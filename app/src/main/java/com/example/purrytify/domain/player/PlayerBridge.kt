@@ -21,7 +21,6 @@ import javax.inject.Singleton
 
 /**
  * Enhanced PlayerBridge to handle playbook from both local and online sources with queue management
- * Now connected to PlayerRepository for actual audio playback and analytics tracking
  */
 @Singleton
 class PlayerBridge @Inject constructor(
@@ -70,6 +69,12 @@ class PlayerBridge @Inject constructor(
     // Internal scope for state synchronization
     private val bridgeScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     
+    // Track last playing state for analytics
+    private var lastIsPlaying = false
+    
+    // Track last position for seek detection
+    private var lastPosition = 0L
+    
     init {
         // Set up callbacks from PlayerRepository
         playerRepository.onPlaybackEnded = {
@@ -84,11 +89,28 @@ class PlayerBridge @Inject constructor(
         }
         
         playerRepository.onPositionChanged = { position ->
-            updateProgress(position)
+            handlePositionChanged(position)
         }
         
         // Start observing PlayerRepository state and sync with PlayerBridge state
         startStateSynchronization()
+    }
+    
+    /**
+     * Handle position changes and detect seeks
+     */
+    private fun handlePositionChanged(position: Long) {
+        // Detect if this is a seek operation (large position jump)
+        val positionDiff = kotlin.math.abs(position - lastPosition)
+        val isLikelySeek = positionDiff > 2000 // More than 2 seconds difference
+        
+        if (isLikelySeek && lastPosition > 0) {
+            Log.d(TAG, "Seek detected: from ${lastPosition}ms to ${position}ms")
+            listeningSessionTracker.onSeek(lastPosition, position)
+        }
+        
+        lastPosition = position
+        updateProgress(position)
     }
     
     private fun startStateSynchronization() {
@@ -98,10 +120,15 @@ class PlayerBridge @Inject constructor(
                 _isPlaying.value = isPlaying
                 
                 // Handle analytics tracking for play/pause
-                if (isPlaying) {
-                    listeningSessionTracker.resumeSession()
-                } else {
-                    listeningSessionTracker.pauseSession()
+                if (lastIsPlaying != isPlaying) {
+                    if (isPlaying) {
+                        Log.d(TAG, "Playback resumed - resuming analytics session")
+                        listeningSessionTracker.resumeSession()
+                    } else {
+                        Log.d(TAG, "Playback paused - pausing analytics session")
+                        listeningSessionTracker.pauseSession()
+                    }
+                    lastIsPlaying = isPlaying
                 }
             }
         }
@@ -157,7 +184,10 @@ class PlayerBridge @Inject constructor(
         // End previous session and start new one
         val userId = currentUserId
         if (userId != null) {
+            Log.d(TAG, "Starting analytics session for: ${item.title}")
             listeningSessionTracker.startSession(item, userId)
+        } else {
+            Log.w(TAG, "No user ID available for analytics tracking")
         }
         
         _currentItem.value = item
@@ -165,9 +195,10 @@ class PlayerBridge @Inject constructor(
         // Use PlayerRepository for actual playback
         playerRepository.playItem(item)
         
-        // Reset progress
+        // Reset progress and position tracking
         _progress.value = 0f
         _currentPosition.value = 0L
+        lastPosition = 0L
         
         // Start music service for background playback
         startMusicService()
@@ -210,7 +241,9 @@ class PlayerBridge @Inject constructor(
      * Play next song in queue
      */
     fun next() {
-        // End current session before switching
+        Log.d(TAG, "Next button pressed - ending current session and switching to next song")
+        
+        // End current session before switching (this will record the listening time)
         listeningSessionTracker.onSongSkipped()
         
         val currentQueue = _queue.value
@@ -220,15 +253,20 @@ class PlayerBridge @Inject constructor(
             val nextIndex = (currentIdx + 1) % currentQueue.size
             _currentIndex.value = nextIndex
             Log.d(TAG, "Playing next song: index $nextIndex")
+            
+            // Play the next item (this will start a new session)
             playItem(currentQueue[nextIndex])
         }
     }
     
     /**
      * Play previous song in queue
+     * FIXED: Properly end current session before switching
      */
     fun previous() {
-        // End current session before switching
+        Log.d(TAG, "Previous button pressed - ending current session and switching to previous song")
+        
+        // End current session before switching (this will record the listening time)
         listeningSessionTracker.onSongSkipped()
         
         val currentQueue = _queue.value
@@ -238,6 +276,8 @@ class PlayerBridge @Inject constructor(
             val prevIndex = if (currentIdx == 0) currentQueue.size - 1 else currentIdx - 1
             _currentIndex.value = prevIndex
             Log.d(TAG, "Playing previous song: index $prevIndex")
+            
+            // Play the previous item (this will start a new session)
             playItem(currentQueue[prevIndex])
         }
     }
@@ -246,14 +286,20 @@ class PlayerBridge @Inject constructor(
      * Toggle play/pause
      */
     fun togglePlayPause() {
+        Log.d(TAG, "Play/pause toggled")
         playerRepository.togglePlayPause()
+        // Analytics tracking will be handled automatically by state synchronization
     }
     
     /**
      * Seek to a specific position
      */
     fun seekTo(position: Long) {
+        Log.d(TAG, "Seeking to position: ${position}ms")
+        val oldPosition = _currentPosition.value
         playerRepository.seekTo(position)
+        // The position change will be detected in handlePositionChanged()
+        // which will call listeningSessionTracker.onSeek()
     }
     
     /**
@@ -299,6 +345,8 @@ class PlayerBridge @Inject constructor(
         _currentPosition.value = 0L
         _duration.value = 0L
         _playbackContext.value = PlaybackContext.None
+        lastIsPlaying = false
+        lastPosition = 0L
     }
     
     /**
@@ -343,6 +391,13 @@ class PlayerBridge @Inject constructor(
         val minutes = totalSeconds / 60
         val seconds = totalSeconds % 60
         return String.format("%d:%02d", minutes, seconds)
+    }
+    
+    /**
+     * Get current session debugging info from the listening session tracker
+     */
+    fun getSessionDebugInfo(): String {
+        return listeningSessionTracker.getCurrentSessionInfo()
     }
 }
 

@@ -1,5 +1,7 @@
 package com.example.purrytify.ui.screens.analytics
 
+import android.util.Log
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -9,11 +11,17 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.purrytify.domain.model.MonthlyAnalytics
 import com.example.purrytify.ui.components.LoadingView
@@ -22,6 +30,7 @@ import kotlin.math.max
 
 /**
  * Time Listened detail screen showing daily chart and listening statistics for a specific month
+ * Using custom Canvas implementation instead of external chart library
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -169,11 +178,11 @@ private fun TimeListenedContent(
         
         Spacer(modifier = Modifier.height(32.dp))
         
-        // Daily Chart
+        // Daily Chart with Custom Implementation
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(320.dp), // Increased height to accommodate labels
+                .height(400.dp),
             colors = CardDefaults.cardColors(
                 containerColor = PurrytifyLighterBlack.copy(alpha = 0.5f)
             ),
@@ -182,7 +191,10 @@ private fun TimeListenedContent(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(16.dp)
+                    .padding(
+                        horizontal = 16.dp,
+                        vertical = 32.dp,
+                    )
             ) {
                 Text(
                     text = "Daily Chart",
@@ -196,7 +208,7 @@ private fun TimeListenedContent(
                 
                 // Chart content
                 if (analytics.dailyData.isNotEmpty()) {
-                    DailyChart(
+                    CustomBarChart(
                         dailyData = analytics.dailyData,
                         daysInMonth = daysInMonth,
                         modifier = Modifier.fillMaxSize()
@@ -231,7 +243,7 @@ private fun TimeListenedContent(
 }
 
 @Composable
-private fun DailyChart(
+private fun CustomBarChart(
     dailyData: List<com.example.purrytify.domain.model.DailyListeningData>,
     daysInMonth: Int,
     modifier: Modifier = Modifier
@@ -256,136 +268,119 @@ private fun DailyChart(
     
     val actualMaxMinutes = yAxisTicks.maxOrNull() ?: maxMinutes
     
-    Box(
-        modifier = modifier.fillMaxSize()
-    ) {
-        Row(
-            modifier = Modifier.fillMaxSize()
-        ) {
-            // Y-axis with labels
-            Column(
-                modifier = Modifier
-                    .width(40.dp)
-                    .fillMaxHeight(),
-                verticalArrangement = Arrangement.SpaceBetween
-            ) {
-                // Y-axis labels (from top to bottom)
-                yAxisTicks.reversed().forEach { tick ->
-                    Text(
-                        text = "$tick",
-                        style = Typography.bodySmall,
-                        color = PurrytifyLightGray,
-                        fontSize = Typography.bodySmall.fontSize * 0.8f,
-                        modifier = Modifier.height(16.dp)
-                    )
-                }
+    Canvas(modifier = modifier) {
+        val canvasWidth = size.width
+        val canvasHeight = size.height
+        
+        // Chart area dimensions
+        val chartLeft = 50f
+        val chartTop = 20f
+        val chartRight = canvasWidth - 20f
+        val chartBottom = canvasHeight - 40f
+        val chartWidth = chartRight - chartLeft
+        val chartHeight = chartBottom - chartTop
+        
+        // Draw Y-axis labels
+        yAxisTicks.reversed().forEachIndexed { index, tick ->
+            val y = chartTop + (index * chartHeight / (yAxisTicks.size - 1))
+
+            val paint = android.graphics.Paint().apply {
+                color = PurrytifyLightGray.hashCode()
+                textSize = 32f
+                isAntiAlias = true
             }
+
+            val tickText = tick.toString()
+            val textWidth = paint.measureText(tickText)
+
+            val rightAlignPosition = 25f
+            val x = rightAlignPosition - textWidth
+
+            drawContext.canvas.nativeCanvas.drawText(
+                tickText,
+                x,
+                y + 5f,
+                paint
+            )
+        }
+        
+        // Draw bars
+        val barWidth = chartWidth / daysInMonth
+        val barSpacing = barWidth * 0.1f
+        val actualBarWidth = barWidth - barSpacing
+        
+        for (day in 1..daysInMonth) {
+            val dayData = dataMap[day]
+            val durationMinutes = (dayData?.totalDurationMs ?: 0L) / (1000 * 60)
             
-            // Chart area
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxHeight()
-            ) {
-                // Chart bars area
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f)
-                        .padding(start = 8.dp, end = 8.dp),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                    verticalAlignment = Alignment.Bottom
-                ) {
-                    // Show bars for each day of the month
-                    val daysToShow = minOf(daysInMonth, 31)
-                    
-                    repeat(daysToShow) { index ->
-                        val day = index + 1
-                        val dayData = dataMap[day]
-                        val hasData = dayData != null
-                        val durationMinutes = (dayData?.totalDurationMs ?: 0L) / (1000 * 60)
-                        
-                        // Calculate bar height (minimum 2dp for visibility, maximum based on data)
-                        val heightFraction = if (hasData && actualMaxMinutes > 0) {
-                            (durationMinutes.toFloat() / actualMaxMinutes.toFloat()).coerceIn(0.02f, 1.0f)
-                        } else {
-                            0.02f
-                        }
-                        
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            // Bar
-                            Box(
-                                modifier = Modifier
-                                    .width(8.dp)
-                                    .fillMaxHeight(heightFraction)
-                                    .background(
-                                        color = if (hasData) PurrytifyGreen else PurrytifyDarkGray.copy(alpha = 0.3f),
-                                        shape = RoundedCornerShape(topStart = 2.dp, topEnd = 2.dp)
-                                    )
-                            )
-                        }
-                    }
-                }
+            if (durationMinutes > 0) {
+                val barHeight = (durationMinutes.toFloat() / actualMaxMinutes.toFloat()) * chartHeight
+                val x = chartLeft + (day - 1) * barWidth + barSpacing / 2
+                val y = chartBottom - barHeight
                 
-                Spacer(modifier = Modifier.height(12.dp)) // Increased spacing
-                
-                // X-axis day labels - FIXED: Prevent text wrapping
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(24.dp) // Fixed height to prevent wrapping
-                        .padding(start = 8.dp, end = 8.dp),
-                    horizontalArrangement = Arrangement.SpaceEvenly
-                ) {
-                    val daysToShow = minOf(daysInMonth, 31)
-                    
-                    repeat(daysToShow) { index ->
-                        val day = index + 1
-                        
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .fillMaxHeight(), // Use full available height
-                            contentAlignment = Alignment.Center
-                        ) {
-                            // Show every 5th day or first/last day to avoid crowding
-                            if (day % 5 == 1 || day == daysInMonth) {
-                                Text(
-                                    text = day.toString(),
-                                    style = Typography.bodySmall,
-                                    color = PurrytifyLightGray,
-                                    fontSize = Typography.bodySmall.fontSize * 0.75f, // Slightly smaller
-                                    textAlign = TextAlign.Center,
-                                    maxLines = 1, // Prevent wrapping
-                                    overflow = TextOverflow.Clip // Clip instead of ellipsis
-                                )
-                            }
-                        }
-                    }
-                }
+                // Draw bar with rounded top corners
+                drawRoundRect(
+                    color = PurrytifyGreen,
+                    topLeft = Offset(x, y),
+                    size = Size(actualBarWidth, barHeight),
+                    cornerRadius = CornerRadius(4f, 4f)
+                )
             }
         }
         
-        // Axis labels
-        Text(
-            text = "Minutes",
-            style = Typography.bodySmall,
-            color = PurrytifyLightGray,
-            modifier = Modifier
-                .align(Alignment.TopStart)
-                .padding(bottom = 8.dp)
+        // Draw X-axis labels (show every 5th day)
+        for (day in 1..daysInMonth step 5) {
+            val x = chartLeft + (day - 1) * barWidth + actualBarWidth / 2
+            if (day <= daysInMonth) {
+                drawContext.canvas.nativeCanvas.drawText(
+                    day.toString(),
+                    x - 10f,
+                    chartBottom + 45f,
+                    android.graphics.Paint().apply {
+                        color = PurrytifyLightGray.hashCode()
+                        textSize = 32f
+                        isAntiAlias = true
+                    }
+                )
+            }
+        }
+        
+        // Draw axis lines
+        drawLine(
+            color = PurrytifyDarkGray,
+            start = Offset(chartLeft, chartTop),
+            end = Offset(chartLeft, chartBottom),
+            strokeWidth = 2f
         )
         
-        Text(
-            text = "Day",
-            style = Typography.bodySmall,
-            color = PurrytifyLightGray,
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(top = 8.dp)
+        drawLine(
+            color = PurrytifyDarkGray,
+            start = Offset(chartLeft, chartBottom),
+            end = Offset(chartRight, chartBottom),
+            strokeWidth = 2f
+        )
+        
+        // Draw axis labels
+        drawContext.canvas.nativeCanvas.drawText(
+            "Minutes",
+            0f,
+            chartTop - 60f,
+            android.graphics.Paint().apply {
+                color = PurrytifyLightGray.hashCode()
+                textSize = 32f
+                isAntiAlias = true
+            }
+        )
+        
+        drawContext.canvas.nativeCanvas.drawText(
+            "Day",
+            chartRight - 30f,
+            chartBottom + 85f,
+            android.graphics.Paint().apply {
+                color = PurrytifyLightGray.hashCode()
+                textSize = 32f
+                isAntiAlias = true
+            }
         )
     }
 }

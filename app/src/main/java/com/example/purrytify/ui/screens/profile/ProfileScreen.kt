@@ -4,10 +4,10 @@ import android.content.Context
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -139,163 +139,178 @@ fun ProfileScreen(
                 val countryName = CountryUtils.getCountryNameFromCode(countryCode) ?: countryCode
                 val flagEmoji = CountryUtils.getFlagEmoji(countryCode)
                 
-                Column(
+                // Use LazyColumn for the entire screen content to handle scrolling properly
+                LazyColumn(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(horizontal = 24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    contentPadding = PaddingValues(bottom = 32.dp)
                 ) {
-                    Spacer(modifier = Modifier.height(32.dp))
+                    // Top spacing
+                    item {
+                        Spacer(modifier = Modifier.height(32.dp))
+                    }
                     
                     // Profile picture
-                    Box(
-                        modifier = Modifier
-                            .size(96.dp)
-                            .clip(CircleShape)
-                            .clickable { imagePicker.launch("image/*") },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        AsyncImage(
-                            model = ImageRequest.Builder(LocalContext.current)
-                                .data(profile.profilePhotoUrl)
-                                .crossfade(true)
-                                .build(),
-                            contentDescription = "Profile Photo",
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop,
-                            error = painterResource(id = R.drawable.ic_launcher_foreground)
-                        )
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .size(96.dp)
+                                .clip(CircleShape)
+                                .clickable { imagePicker.launch("image/*") },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            AsyncImage(
+                                model = ImageRequest.Builder(LocalContext.current)
+                                    .data(profile.profilePhotoUrl)
+                                    .crossfade(true)
+                                    .build(),
+                                contentDescription = "Profile Photo",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop,
+                                error = painterResource(id = R.drawable.ic_launcher_foreground)
+                            )
+                        }
                     }
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                    item { Spacer(modifier = Modifier.height(16.dp)) }
                     
                     // Username
-                    Text(
-                        text = profile.username,
-                        style = Typography.titleLarge,
-                        color = PurrytifyWhite,
-                        fontWeight = FontWeight.Bold
-                    )
+                    item {
+                        Text(
+                            text = profile.username,
+                            style = Typography.titleLarge,
+                            color = PurrytifyWhite,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                     
-                    Spacer(modifier = Modifier.height(4.dp))
+                    item { Spacer(modifier = Modifier.height(4.dp)) }
                     
                     // Location with flag and country name
-                    Card(
-                        modifier = Modifier
-                            .padding(top = 8.dp, bottom = 16.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = PurrytifyLighterBlack
-                        ),
-                        shape = RoundedCornerShape(8.dp)
-                    ) {
-                        Row(
+                    item {
+                        Card(
                             modifier = Modifier
-                                .padding(horizontal = 16.dp, vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center
+                                .padding(top = 8.dp, bottom = 16.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = PurrytifyLighterBlack
+                            ),
+                            shape = RoundedCornerShape(8.dp)
                         ) {
-                            // Flag emoji
-                            Text(
-                                text = flagEmoji,
-                                style = Typography.titleMedium
-                            )
-                            
-                            Spacer(modifier = Modifier.width(8.dp))
-                            
-                            // Country name and code
-                            Text(
-                                text = "$countryName ($countryCode)",
-                                style = Typography.bodyMedium,
-                                color = PurrytifyWhite
-                            )
+                            Row(
+                                modifier = Modifier
+                                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                // Flag emoji
+                                Text(
+                                    text = flagEmoji,
+                                    style = Typography.titleMedium
+                                )
+                                
+                                Spacer(modifier = Modifier.width(8.dp))
+                                
+                                // Country name and code
+                                Text(
+                                    text = "$countryName ($countryCode)",
+                                    style = Typography.bodyMedium,
+                                    color = PurrytifyWhite
+                                )
+                            }
                         }
                     }
                     
-                    Spacer(modifier = Modifier.height(8.dp))
+                    item { Spacer(modifier = Modifier.height(8.dp)) }
                     
                     // Edit and Logout buttons
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceEvenly
-                    ) {
-                        // Edit button
-                        Button(
-                            onClick = { viewModel.onEditProfileClick() },
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(48.dp),
-                            shape = CircleShape,
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = PurrytifyDarkGray,
-                                contentColor = PurrytifyWhite
-                            )
+                    item {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceEvenly
                         ) {
-                            Text(
-                                text = "Edit Profile",
-                                fontWeight = FontWeight.Medium
-                            )
-                        }
-                        
-                        Spacer(modifier = Modifier.width(16.dp))
-                        
-                        // Logout button
-                        Button(
-                            onClick = { viewModel.onLogoutClick() },
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(48.dp),
-                            shape = CircleShape,
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Color.Red,
-                                contentColor = PurrytifyWhite
-                            )
-                        ) {
-                            Text(
-                                text = "Logout",
-                                fontWeight = FontWeight.Medium
-                            )
+                            // Edit button
+                            Button(
+                                onClick = { viewModel.onEditProfileClick() },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(48.dp),
+                                shape = CircleShape,
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = PurrytifyDarkGray,
+                                    contentColor = PurrytifyWhite
+                                )
+                            ) {
+                                Text(
+                                    text = "Edit Profile",
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                            
+                            Spacer(modifier = Modifier.width(16.dp))
+                            
+                            // Logout button
+                            Button(
+                                onClick = { viewModel.onLogoutClick() },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(48.dp),
+                                shape = CircleShape,
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = Color.Red,
+                                    contentColor = PurrytifyWhite
+                                )
+                            ) {
+                                Text(
+                                    text = "Logout",
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
                         }
                     }
                     
-                    Spacer(modifier = Modifier.height(32.dp))
+                    item { Spacer(modifier = Modifier.height(32.dp)) }
                     
                     // Stats row
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceEvenly
-                    ) {
-                        // Songs count
-                        StatItem(
-                            count = songsCount,
-                            label = "SONGS"
-                        )
-                        
-                        // Liked count
-                        StatItem(
-                            count = likedSongsCount,
-                            label = "LIKED"
-                        )
-                        
-                        // Listened count
-                        StatItem(
-                            count = listenedSongsCount,
-                            label = "LISTENED"
-                        )
+                    item {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceEvenly
+                        ) {
+                            // Songs count
+                            StatItem(
+                                count = songsCount,
+                                label = "SONGS"
+                            )
+                            
+                            // Liked count
+                            StatItem(
+                                count = likedSongsCount,
+                                label = "LIKED"
+                            )
+                            
+                            // Listened count
+                            StatItem(
+                                count = listenedSongsCount,
+                                label = "LISTENED"
+                            )
+                        }
                     }
                     
-                    Spacer(modifier = Modifier.height(32.dp))
+                    item { Spacer(modifier = Modifier.height(32.dp)) }
 
-                    // Sound Capsule Section - Updated to show all monthly analytics
-                    SoundCapsuleSection(
-                        allMonthlyAnalytics = allMonthlyAnalytics,
-                        isLoading = analyticsLoading,
-                        onTimeListenedClick = { year, month -> onNavigateToTimeListened(year, month) },
-                        onTopArtistClick = { year, month -> onNavigateToTopArtists(year, month) },
-                        onTopSongClick = { year, month -> onNavigateToTopSongs(year, month) },
-                        onExportClick = { year, month -> viewModel.exportAnalytics(year, month) }
-                    )
-                    
-                    Spacer(modifier = Modifier.height(32.dp))
+                    // Sound Capsule Section - Now will expand naturally without internal scrolling
+                    item {
+                        SoundCapsuleSection(
+                            allMonthlyAnalytics = allMonthlyAnalytics,
+                            isLoading = analyticsLoading,
+                            onTimeListenedClick = { year, month -> onNavigateToTimeListened(year, month) },
+                            onTopArtistClick = { year, month -> onNavigateToTopArtists(year, month) },
+                            onTopSongClick = { year, month -> onNavigateToTopSongs(year, month) },
+                            onExportClick = { year, month -> viewModel.exportAnalytics(year, month) }
+                        )
+                    }
                 }
                 
                 // Logout confirmation dialog

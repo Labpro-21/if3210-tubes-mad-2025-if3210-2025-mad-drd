@@ -3,8 +3,6 @@ package com.example.purrytify.ui.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Analytics
@@ -25,6 +23,7 @@ import com.example.purrytify.ui.theme.*
 /**
  * Sound Capsule section for the Profile screen
  * Shows all monthly analytics data
+ * FIXED: Removed internal LazyColumn to allow parent scrolling
  */
 @Composable
 fun SoundCapsuleSection(
@@ -97,24 +96,18 @@ fun SoundCapsuleSection(
                     modifier = Modifier.padding(bottom = 12.dp)
                 )
                 
-                // Limit height and make scrollable
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(max = 400.dp)
+                // FIXED: Removed LazyColumn and height limit, just show all items
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    LazyColumn(
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        items(allMonthlyAnalytics) { analytics ->
-                            MonthlyAnalyticsCard(
-                                analytics = analytics,
-                                onTimeListenedClick = { onTimeListenedClick(analytics.year, analytics.month) },
-                                onTopArtistClick = { onTopArtistClick(analytics.year, analytics.month) },
-                                onTopSongClick = { onTopSongClick(analytics.year, analytics.month) },
-                                onExportClick = { onExportClick(analytics.year, analytics.month) }
-                            )
-                        }
+                    allMonthlyAnalytics.forEach { analytics ->
+                        MonthlyAnalyticsCard(
+                            analytics = analytics,
+                            onTimeListenedClick = { onTimeListenedClick(analytics.year, analytics.month) },
+                            onTopArtistClick = { onTopArtistClick(analytics.year, analytics.month) },
+                            onTopSongClick = { onTopSongClick(analytics.year, analytics.month) },
+                            onExportClick = { onExportClick(analytics.year, analytics.month) }
+                        )
                     }
                 }
             } else {

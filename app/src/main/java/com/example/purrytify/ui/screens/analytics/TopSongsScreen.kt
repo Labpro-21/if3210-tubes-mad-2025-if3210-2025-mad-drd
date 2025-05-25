@@ -12,7 +12,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -25,6 +24,7 @@ import com.example.purrytify.ui.theme.*
 
 /**
  * Top Songs screen showing detailed song analytics for a specific month/year
+ * Now responsive and fully scrollable for all orientations
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -69,15 +69,7 @@ fun TopSongsScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(
-                    brush = Brush.verticalGradient(
-                        colors = listOf(
-                            PurrytifyBlack,
-                            PurrytifyLighterBlack.copy(alpha = 0.8f),
-                            PurrytifyBlack
-                        )
-                    )
-                )
+                .background(PurrytifyBlack)
                 .padding(paddingValues)
         ) {
             if (isLoading) {
@@ -102,45 +94,50 @@ private fun TopSongsContent(
     analytics: SongAnalytics,
     modifier: Modifier = Modifier
 ) {
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(horizontal = 16.dp)
+    LazyColumn(
+        modifier = modifier.fillMaxSize(),
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Spacer(modifier = Modifier.height(16.dp))
-        
-        // Header with month/year
-        Text(
-            text = analytics.displayName,
-            style = Typography.headlineSmall,
-            color = PurrytifyWhite,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(horizontal = 8.dp)
-        )
-        
-        Spacer(modifier = Modifier.height(8.dp))
-        
-        // Song count info
-        Text(
-            text = "You played ${analytics.totalSongs} different songs this month.",
-            style = Typography.bodyLarge,
-            color = PurrytifyLightGray,
-            modifier = Modifier.padding(horizontal = 8.dp)
-        )
-        
-        Spacer(modifier = Modifier.height(24.dp))
+        // Header section
+        item {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp)
+            ) {
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                Text(
+                    text = analytics.displayName,
+                    style = Typography.headlineSmall,
+                    color = PurrytifyWhite,
+                    fontWeight = FontWeight.Bold
+                )
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                Text(
+                    text = "You played ${analytics.totalSongs} different songs this month.",
+                    style = Typography.bodyLarge,
+                    color = PurrytifyLightGray
+                )
+                
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+        }
         
         // Songs list
-        LazyColumn(
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-            contentPadding = PaddingValues(bottom = 16.dp)
-        ) {
-            itemsIndexed(analytics.songs) { index, song ->
-                TopSongItem(
-                    song = song,
-                    rank = index + 1
-                )
-            }
+        itemsIndexed(analytics.songs) { index, song ->
+            TopSongItem(
+                song = song,
+                rank = index + 1
+            )
+        }
+        
+        // Add bottom spacing for better scrolling experience
+        item {
+            Spacer(modifier = Modifier.height(16.dp))
         }
     }
 }
@@ -255,36 +252,41 @@ private fun NoDataContent(
     val monthName = java.time.Month.of(month).name.lowercase()
         .replaceFirstChar { it.uppercase() }
     
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+    LazyColumn(
+        modifier = modifier.fillMaxSize(),
+        contentPadding = PaddingValues(24.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Icon(
-            imageVector = Icons.Default.MusicNote,
-            contentDescription = "No songs",
-            tint = PurrytifyDarkGray,
-            modifier = Modifier.size(64.dp)
-        )
-        
-        Spacer(modifier = Modifier.height(16.dp))
-        
-        Text(
-            text = "No data available",
-            style = Typography.headlineSmall,
-            color = PurrytifyWhite,
-            fontWeight = FontWeight.Bold
-        )
-        
-        Spacer(modifier = Modifier.height(8.dp))
-        
-        Text(
-            text = "No songs played in $monthName $year",
-            style = Typography.bodyLarge,
-            color = PurrytifyLightGray,
-            textAlign = TextAlign.Center
-        )
+        item {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Icon(
+                    imageVector = Icons.Default.MusicNote,
+                    contentDescription = "No songs",
+                    tint = PurrytifyDarkGray,
+                    modifier = Modifier.size(64.dp)
+                )
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                Text(
+                    text = "No data available",
+                    style = Typography.headlineSmall,
+                    color = PurrytifyWhite,
+                    fontWeight = FontWeight.Bold
+                )
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                Text(
+                    text = "No songs played in $monthName $year",
+                    style = Typography.bodyLarge,
+                    color = PurrytifyLightGray,
+                    textAlign = TextAlign.Center
+                )
+            }
+        }
     }
 }

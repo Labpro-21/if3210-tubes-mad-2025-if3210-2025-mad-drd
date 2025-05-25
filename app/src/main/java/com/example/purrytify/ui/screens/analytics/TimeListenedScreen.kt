@@ -4,6 +4,7 @@ import android.util.Log
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -14,10 +15,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -31,6 +32,7 @@ import kotlin.math.max
 /**
  * Time Listened detail screen showing daily chart and listening statistics for a specific month
  * Using custom Canvas implementation instead of external chart library
+ * Now responsive and scrollable for all orientations
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -75,15 +77,7 @@ fun TimeListenedScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(
-                    brush = Brush.verticalGradient(
-                        colors = listOf(
-                            PurrytifyBlack,
-                            PurrytifyLighterBlack.copy(alpha = 0.8f),
-                            PurrytifyBlack
-                        )
-                    )
-                )
+                .background(PurrytifyBlack)
                 .padding(paddingValues)
         ) {
             if (isLoading) {
@@ -108,136 +102,157 @@ private fun TimeListenedContent(
     analytics: MonthlyAnalytics,
     modifier: Modifier = Modifier
 ) {
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+    val configuration = LocalConfiguration.current
+    val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+    val screenHeight = configuration.screenHeightDp.dp
+    
+    // Calculate chart height based on orientation and screen size
+    val chartHeight = when {
+        isLandscape -> maxOf(300.dp, screenHeight * 0.4f)
+        else -> 400.dp
+    }
+    
+    LazyColumn(
+        modifier = modifier.fillMaxSize(),
+        contentPadding = PaddingValues(24.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         // Month header
-        Text(
-            text = analytics.displayName,
-            style = Typography.headlineSmall,
-            color = PurrytifyWhite,
-            fontWeight = FontWeight.Bold
-        )
+        item {
+            Text(
+                text = analytics.displayName,
+                style = Typography.headlineSmall,
+                color = PurrytifyWhite,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.fillMaxWidth(),
+                textAlign = TextAlign.Center
+            )
+        }
         
-        Spacer(modifier = Modifier.height(32.dp))
-        
-        // Main listening time display
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(
-                containerColor = PurrytifyLighterBlack
-            ),
-            shape = RoundedCornerShape(16.dp)
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+        // Main listening time display card
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = PurrytifyLighterBlack
+                ),
+                shape = RoundedCornerShape(16.dp)
             ) {
-                Text(
-                    text = "You listened to music for",
-                    style = Typography.bodyLarge,
-                    color = PurrytifyLightGray
-                )
-                
-                Spacer(modifier = Modifier.height(8.dp))
-                
-                Text(
-                    text = analytics.formattedListeningTime,
-                    style = Typography.displaySmall,
-                    color = PurrytifyGreen,
-                    fontWeight = FontWeight.Bold
-                )
-                
-                Spacer(modifier = Modifier.height(8.dp))
-                
-                Text(
-                    text = "this month.",
-                    style = Typography.bodyLarge,
-                    color = PurrytifyLightGray
-                )
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "You listened to music for",
+                        style = Typography.bodyLarge,
+                        color = PurrytifyLightGray
+                    )
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    Text(
+                        text = analytics.formattedListeningTime,
+                        style = Typography.displaySmall,
+                        color = PurrytifyGreen,
+                        fontWeight = FontWeight.Bold
+                    )
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    Text(
+                        text = "this month.",
+                        style = Typography.bodyLarge,
+                        color = PurrytifyLightGray
+                    )
+                }
             }
         }
         
-        Spacer(modifier = Modifier.height(24.dp))
+        // Daily average info
+        item {
+            val totalMinutes = analytics.totalListeningTimeMs / (1000 * 60)
+            val daysInMonth = java.time.YearMonth.of(analytics.year, analytics.month).lengthOfMonth()
+            val dailyAverage = if (totalMinutes > 0) totalMinutes / daysInMonth else 0
+            
+            Text(
+                text = "Daily average: $dailyAverage min",
+                style = Typography.bodyLarge,
+                color = PurrytifyLightGray,
+                modifier = Modifier.fillMaxWidth(),
+                textAlign = TextAlign.Center
+            )
+        }
         
-        // Daily average
-        val totalMinutes = analytics.totalListeningTimeMs / (1000 * 60)
-        val daysInMonth = java.time.YearMonth.of(analytics.year, analytics.month).lengthOfMonth()
-        val dailyAverage = if (totalMinutes > 0) totalMinutes / daysInMonth else 0
-        
-        Text(
-            text = "Daily average: $dailyAverage min",
-            style = Typography.bodyLarge,
-            color = PurrytifyLightGray
-        )
-        
-        Spacer(modifier = Modifier.height(32.dp))
-        
-        // Daily Chart with Custom Implementation
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(400.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = PurrytifyLighterBlack.copy(alpha = 0.5f)
-            ),
-            shape = RoundedCornerShape(12.dp)
-        ) {
-            Column(
+        // Daily Chart
+        item {
+            Card(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(
-                        horizontal = 16.dp,
-                        vertical = 32.dp,
-                    )
+                    .fillMaxWidth()
+                    .height(chartHeight),
+                colors = CardDefaults.cardColors(
+                    containerColor = PurrytifyLighterBlack.copy(alpha = 0.5f)
+                ),
+                shape = RoundedCornerShape(12.dp)
             ) {
-                Text(
-                    text = "Daily Chart",
-                    style = Typography.titleMedium,
-                    color = PurrytifyWhite,
-                    fontWeight = FontWeight.Medium,
-                    modifier = Modifier.align(Alignment.CenterHorizontally)
-                )
-                
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                // Chart content
-                if (analytics.dailyData.isNotEmpty()) {
-                    CustomBarChart(
-                        dailyData = analytics.dailyData,
-                        daysInMonth = daysInMonth,
-                        modifier = Modifier.fillMaxSize()
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(
+                            horizontal = 16.dp,
+                            vertical = if (isLandscape) 16.dp else 32.dp,
+                        )
+                ) {
+                    Text(
+                        text = "Daily Chart",
+                        style = Typography.titleMedium,
+                        color = PurrytifyWhite,
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier.align(Alignment.CenterHorizontally)
                     )
-                } else {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    // Chart content
+                    if (analytics.dailyData.isNotEmpty()) {
+                        val daysInMonth = java.time.YearMonth.of(analytics.year, analytics.month).lengthOfMonth()
+                        CustomBarChart(
+                            dailyData = analytics.dailyData,
+                            daysInMonth = daysInMonth,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    } else {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
                         ) {
-                            Text(
-                                text = "No daily data available",
-                                style = Typography.bodyMedium,
-                                color = PurrytifyLightGray
-                            )
-                            
-                            Spacer(modifier = Modifier.height(4.dp))
-                            
-                            Text(
-                                text = "Start listening to see daily charts",
-                                style = Typography.bodySmall,
-                                color = PurrytifyDarkGray
-                            )
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(
+                                    text = "No daily data available",
+                                    style = Typography.bodyMedium,
+                                    color = PurrytifyLightGray
+                                )
+                                
+                                Spacer(modifier = Modifier.height(4.dp))
+                                
+                                Text(
+                                    text = "Start listening to see daily charts",
+                                    style = Typography.bodySmall,
+                                    color = PurrytifyDarkGray
+                                )
+                            }
                         }
                     }
                 }
             }
+        }
+        
+        // Add bottom spacing for better scrolling experience
+        item {
+            Spacer(modifier = Modifier.height(16.dp))
         }
     }
 }
@@ -394,27 +409,32 @@ private fun NoDataContent(
     val monthName = java.time.Month.of(month).name.lowercase()
         .replaceFirstChar { it.uppercase() }
     
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+    LazyColumn(
+        modifier = modifier.fillMaxSize(),
+        contentPadding = PaddingValues(24.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(
-            text = "No data available",
-            style = Typography.headlineSmall,
-            color = PurrytifyWhite,
-            fontWeight = FontWeight.Bold
-        )
-        
-        Spacer(modifier = Modifier.height(16.dp))
-        
-        Text(
-            text = "No listening data for $monthName $year",
-            style = Typography.bodyLarge,
-            color = PurrytifyLightGray,
-            textAlign = TextAlign.Center
-        )
+        item {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "No data available",
+                    style = Typography.headlineSmall,
+                    color = PurrytifyWhite,
+                    fontWeight = FontWeight.Bold
+                )
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                Text(
+                    text = "No listening data for $monthName $year",
+                    style = Typography.bodyLarge,
+                    color = PurrytifyLightGray,
+                    textAlign = TextAlign.Center
+                )
+            }
+        }
     }
 }

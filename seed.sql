@@ -1,0 +1,159 @@
+-- -- Create temporary tables for random song data
+-- CREATE TEMPORARY TABLE temp_songs (
+--     songTitle TEXT,
+--     artistName TEXT
+-- )
+
+-- CREATE TEMPORARY TABLE temp_song_pool (
+--     songId TEXT,
+--     songTitle TEXT,
+--     artistName TEXT,
+--     avgDuration INTEGER
+-- )
+
+-- -- Insert sample songs and artists
+-- INSERT INTO temp_songs (songTitle, artistName) VALUES
+--     ('Midnight Dreams', 'Luna Parker'),
+--     ('Electric Nights', 'Neon Collective'),
+--     ('Summer Breeze', 'Ocean Drive'),
+--     ('Digital Love', 'Cyber Hearts'),
+--     ('Golden Hour', 'Sunset Boulevard'),
+--     ('Neon Lights', 'Chrome City'),
+--     ('Starfall', 'Cosmic Wanderers'),
+--     ('Velvet Sky', 'Midnight Society'),
+--     ('Thunder Road', 'Electric Storm'),
+--     ('Crystal Waters', 'Prism'),
+--     ('Fire and Ice', 'Element'),
+--     ('Dancing Shadows', 'Ghost Lane'),
+--     ('Purple Rain', 'Violet Storm'),
+--     ('Silver Moon', 'Lunar Express'),
+--     ('Bright Lights', 'City Pulse'),
+--     ('Wild Heart', 'Freedom Riders'),
+--     ('Ocean Waves', 'Tidal Force'),
+--     ('Mountain High', 'Peak Performance'),
+--     ('Desert Rose', 'Sand Dunes'),
+--     ('Northern Star', 'Aurora'),
+--     ('Broken Dreams', 'Shattered Glass'),
+--     ('Perfect Storm', 'Weather System'),
+--     ('Lost in Time', 'Temporal Shift'),
+--     ('Endless Summer', 'Forever Young'),
+--     ('Dark Matter', 'Black Hole'),
+--     ('Solar Flare', 'Sun Burst'),
+--     ('Gravity', 'Space Debris'),
+--     ('Quantum Leap', 'Particle Physics'),
+--     ('Magnetic Field', 'Force of Nature'),
+--     ('Speed of Light', 'Velocity'),
+--     ('Echo Chamber', 'Sound Wave'),
+--     ('Frequency', 'Radio Static'),
+--     ('Wavelength', 'Signal'),
+--     ('Amplify', 'Volume Control'),
+--     ('Distortion', 'Feedback Loop'),
+--     ('Harmony', 'Perfect Pitch'),
+--     ('Rhythm', 'Beat Drop'),
+--     ('Melody', 'Sweet Sound'),
+--     ('Symphony', 'Orchestra'),
+--     ('Acoustic Dreams', 'Unplugged'),
+--     ('Electronic Pulse', 'Digital Age'),
+--     ('Synthetic Love', 'AI Heart'),
+--     ('Virtual Reality', 'Cyber Space'),
+--     ('Matrix Code', 'Binary'),
+--     ('Data Stream', 'Information'),
+--     ('Algorithm', 'Machine Learning'),
+--     ('Neural Network', 'Deep Mind'),
+--     ('Artificial', 'Synthetic Soul'),
+--     ('Robotic Love', 'Metal Heart'),
+--     ('Future Shock', 'Tomorrow Land')
+
+-- -- Create a pool of songs with random IDs and average durations
+-- INSERT INTO temp_song_pool (songId, songTitle, artistName, avgDuration)
+-- SELECT 
+--     lower(
+--         printf('%08x-%04x-%04x-%04x-%012x',
+--             abs(random()) % 4294967296,
+--             abs(random()) % 65536,
+--             abs(random()) % 65536,
+--             abs(random()) % 65536,
+--             abs(random()) % 281474976710656
+--         )
+--     ) as songId,
+--     songTitle,
+--     artistName,
+--     (120000 + abs(random()) % 240000) as avgDuration  -- 2-6 minutes base duration
+-- FROM temp_songs
+
+-- -- Generate playback data from May 1, 2025 to May 31, 2026
+-- WITH RECURSIVE date_series AS (
+--     -- Start date: May 1, 2025
+--     SELECT date('2025-05-01') as play_date
+--     UNION ALL
+--     SELECT date(play_date, '+1 day')
+--     FROM date_series 
+--     WHERE play_date < '2026-05-31'
+-- ),
+-- daily_plays AS (
+--     SELECT 
+--         play_date,
+--         -- Generate 5-15 plays per day randomly
+--         (5 + abs(random()) % 11) as plays_per_day
+--     FROM date_series
+-- ),
+-- expanded_plays AS (
+--     SELECT 
+--         play_date,
+--         plays_per_day,
+--         -- Create multiple rows for each day
+--         (row_number() OVER (PARTITION BY play_date)) - 1 as play_sequence
+--     FROM daily_plays
+--     JOIN (
+--         -- Generate numbers 0-14 to ensure we have enough rows
+--         WITH RECURSIVE numbers(n) AS (
+--             SELECT 0
+--             UNION ALL
+--             SELECT n + 1 FROM numbers WHERE n < 14
+--         )
+--         SELECT n FROM numbers
+--     ) nums ON nums.n < daily_plays.plays_per_day
+-- )
+-- INSERT INTO playback_event (userId, songId, songTitle, artistName, startTime, listeningDuration)
+-- SELECT 
+--     11 as userId,
+--     "2887445e-4be9-42f9-a6f7-513d9e01586a" as songId,
+--     sp.songTitle,
+--     sp.artistName,
+--     datetime(
+--         ep.play_date || ' ' || 
+--         printf('%02d:%02d:%02d',
+--             abs(random()) % 24,           -- Random hour
+--             abs(random()) % 60,           -- Random minute  
+--             abs(random()) % 60            -- Random second
+--         )
+--     ) as startTime,
+--     -- Listening duration: could be partial (30-100% of song duration)
+--     CAST((sp.avgDuration * (30 + abs(random()) % 71) / 100.0) AS INTEGER) as listeningDuration
+-- FROM expanded_plays ep
+-- JOIN temp_song_pool sp ON 1=1  -- Cartesian join to allow random selection
+-- WHERE sp.rowid = (abs(random()) % (SELECT count(*) FROM temp_song_pool)) + 1
+-- ORDER BY startTime
+
+-- -- Clean up temporary tables
+-- DROP TABLE temp_songs
+-- DROP TABLE temp_song_pool
+
+-- -- Verify the data
+-- SELECT 
+--     COUNT(*) as total_records,
+--     MIN(date(startTime)) as start_date,
+--     MAX(date(startTime)) as end_date,
+--     COUNT(DISTINCT date(startTime)) as unique_days,
+--     AVG(plays_per_day) as avg_plays_per_day,
+--     AVG(listeningDuration) as avg_listening_duration_ms
+-- FROM (
+--     SELECT 
+--         startTime,
+--         listeningDuration,
+--         COUNT(*) OVER (PARTITION BY date(startTime)) as plays_per_day
+--     FROM playback_event
+-- ) stats
+
+-- -- Sample of the generated data
+-- SELECT * FROM playback_event ORDER BY startTime LIMIT 10

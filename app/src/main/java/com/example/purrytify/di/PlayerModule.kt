@@ -45,14 +45,15 @@ object PlayerModule {
     }
     
     /**
-     * Provide the AudioOutputManager as a singleton
+     * Provide the AudioOutputManager as a singleton with PlayerRepository dependency
      */
     @Provides
     @Singleton
     fun provideAudioOutputManager(
         @ApplicationContext context: Context,
-        externalScope: CoroutineScope
+        externalScope: CoroutineScope,
+        playerRepository: PlayerRepository
     ): AudioOutputManager {
-        return AudioOutputManager(context, externalScope)
+        return AudioOutputManager(context, externalScope, playerRepository)
     }
 }

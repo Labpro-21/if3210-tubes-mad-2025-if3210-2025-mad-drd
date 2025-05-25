@@ -8,7 +8,8 @@ data class AudioDeviceInfo(
     val name: String,
     val type: AudioDeviceType,
     val isConnected: Boolean,
-    val isActive: Boolean = false
+    val isActive: Boolean = false,
+    val systemAudioDeviceInfo: android.media.AudioDeviceInfo? = null // Reference to the actual Android AudioDeviceInfo
 )
 
 /**

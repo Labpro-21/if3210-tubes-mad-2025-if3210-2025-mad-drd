@@ -1,8 +1,11 @@
 package com.example.purrytify.data.repository
 
 import android.content.Context
+import android.media.AudioDeviceInfo as SystemAudioDeviceInfo
 import android.net.Uri
+import android.os.Build
 import android.util.Log
+import androidx.annotation.RequiresApi
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
@@ -216,6 +219,30 @@ class PlayerRepository @Inject constructor(
         externalScope.launch(Dispatchers.Main) {
             Log.d(TAG, "Seeking to position: ${positionMs}ms")
             exoPlayer?.seekTo(positionMs)
+        }
+    }
+    
+    /**
+     * Set preferred audio device using ExoPlayer's setPreferredAudioDevice
+     * This is the proper way to control audio routing with ExoPlayer
+     */
+    @RequiresApi(Build.VERSION_CODES.M)
+    fun setPreferredAudioDevice(audioDeviceInfo: SystemAudioDeviceInfo?) {
+        externalScope.launch(Dispatchers.Main) {
+            try {
+                Log.d(TAG, "Setting preferred audio device: ${audioDeviceInfo?.productName ?: "default"}")
+                
+                exoPlayer?.let { player ->
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                        player.setPreferredAudioDevice(audioDeviceInfo)
+                        Log.d(TAG, "✓ ExoPlayer preferred audio device set successfully")
+                    } else {
+                        Log.w(TAG, "setPreferredAudioDevice requires API 23+")
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error setting preferred audio device: ${e.message}", e)
+            }
         }
     }
     

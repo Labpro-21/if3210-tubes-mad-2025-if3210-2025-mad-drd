@@ -22,9 +22,6 @@ import com.example.purrytify.ui.theme.PurrytifyLightGray
 import com.example.purrytify.ui.theme.PurrytifyWhite
 import com.example.purrytify.ui.theme.Typography
 
-/**
- * Component for displaying an online song in a list
- */
 @Composable
 fun OnlineSongItem(
     song: OnlineSong,
@@ -39,7 +36,6 @@ fun OnlineSongItem(
             .padding(vertical = 8.dp, horizontal = 0.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Position number (if provided)
         if (position != null) {
             Text(
                 text = position.toString(),

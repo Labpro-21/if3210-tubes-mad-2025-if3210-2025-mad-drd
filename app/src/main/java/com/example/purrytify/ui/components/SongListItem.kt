@@ -24,10 +24,6 @@ import com.example.purrytify.ui.theme.PurrytifyWhite
 import com.example.purrytify.ui.theme.Typography
 import java.io.File
 
-/**
- * Component for displaying a song in vertical lists (Recently Played, Library)
- * Styled to match the library page XML styling
- */
 @Composable
 fun SongListItem(
     song: Song,

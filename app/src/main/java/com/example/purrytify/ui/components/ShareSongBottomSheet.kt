@@ -31,9 +31,6 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
 
-/**
- * Bottom sheet for sharing songs via URL or QR code
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ShareSongBottomSheet(
@@ -226,9 +223,6 @@ fun ShareSongBottomSheet(
     }
 }
 
-/**
- * Share song via URL using Android ShareSheet
- */
 private fun shareViaURL(context: Context, song: OnlineSong) {
     val deepLink = QRCodeUtils.createSongDeepLink(song.id.toString())
     
@@ -243,9 +237,6 @@ private fun shareViaURL(context: Context, song: OnlineSong) {
     context.startActivity(chooser)
 }
 
-/**
- * Generate QR code and share via Android ShareSheet
- */
 private suspend fun generateAndShareQR(
     context: Context, 
     song: OnlineSong,

@@ -64,7 +64,6 @@ fun TopSongsScreen(
     if (downloadingState is DownloadState.InProgress) {
         val progress = (downloadingState as DownloadState.InProgress)
         
-        // Display a non-dismissible dialog
         Dialog(
             onDismissRequest = { /* Cannot dismiss */ },
             properties = DialogProperties(
@@ -102,10 +101,8 @@ fun TopSongsScreen(
                 actions = {
                     // Download All action - only show if we have songs and not in loading state
                     if (uiState is TopSongsUiState.Success) {
-                        // Show appropriate icon based on download state
                         when (downloadingState) {
-                            // Show cloud-done icon if all songs downloaded
-                            is DownloadState.Success, 
+                            is DownloadState.Success,
                             is DownloadState.Idle -> {
                                 IconButton(
                                     onClick = { 
@@ -203,8 +200,7 @@ fun SongsList(
             .fillMaxSize()
             .padding(horizontal = 16.dp)
     ) {
-        // Additional info text
-        item { 
+        item {
             Spacer(modifier = Modifier.height(16.dp))
             
             Text(
@@ -215,7 +211,6 @@ fun SongsList(
             )
         }
         
-        // Songs list
         itemsIndexed(songs) { index, song ->
             TopSongListItem(
                 song = song,
@@ -225,7 +220,6 @@ fun SongsList(
             )
         }
         
-        // Space at the bottom for any player UI
         item {
             Spacer(modifier = Modifier.height(80.dp))
         }

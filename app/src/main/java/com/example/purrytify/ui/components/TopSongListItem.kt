@@ -25,10 +25,6 @@ import com.example.purrytify.ui.theme.PurrytifyLighterBlack
 import com.example.purrytify.ui.theme.PurrytifyWhite
 import com.example.purrytify.ui.theme.Typography
 
-/**
- * Component for displaying a top song (online song) in a list
- * Styled to match the library page XML styling
- */
 @Composable
 fun TopSongListItem(
     song: OnlineSong,

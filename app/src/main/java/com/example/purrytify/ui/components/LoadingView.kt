@@ -10,9 +10,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.example.purrytify.ui.theme.PurrytifyGreen
 
-/**
- * A loading indicator to be displayed when content is loading
- */
 @Composable
 fun LoadingView(modifier: Modifier = Modifier) {
     Box(

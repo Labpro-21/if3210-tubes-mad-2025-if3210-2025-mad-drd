@@ -33,9 +33,6 @@ import com.example.purrytify.ui.components.ShareSongBottomSheet
 import com.example.purrytify.ui.theme.*
 import java.io.File
 
-/**
- * Full-screen player interface - now responsive and scrollable
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PlayerScreen(

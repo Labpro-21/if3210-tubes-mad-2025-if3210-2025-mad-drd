@@ -24,9 +24,6 @@ import com.example.purrytify.ui.theme.PurrytifyWhite
 import com.example.purrytify.ui.theme.Typography
 import java.io.File
 
-/**
- * Component for displaying a playlist item in a list
- */
 @Composable
 fun PlaylistItemComponent(
     item: PlaylistItem,
@@ -121,13 +118,6 @@ fun PlaylistItemComponent(
                 overflow = TextOverflow.Ellipsis
             )
         }
-        
-        // // Duration
-        // Text(
-        //     text = item.duration,
-        //     style = Typography.bodySmall,
-        //     color = PurrytifyLightGray,
-        //     modifier = Modifier.padding(start = 8.dp)
-        // )
+
     }
 }

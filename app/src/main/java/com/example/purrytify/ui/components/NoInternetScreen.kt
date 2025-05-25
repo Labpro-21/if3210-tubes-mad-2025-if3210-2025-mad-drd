@@ -22,9 +22,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.purrytify.ui.theme.*
 
-/**
- * Screen shown when there's no internet connection
- */
 @Composable
 fun NoInternetScreen() {
     Column(

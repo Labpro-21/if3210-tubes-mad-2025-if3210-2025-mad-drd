@@ -23,9 +23,6 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import com.example.purrytify.ui.components.MiniPlayer
 import com.example.purrytify.ui.screens.player.PlayerViewModel
 
-/**
- * Main app scaffold that handles navigation and hosts the NavHost with responsive design
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PurrytifyAppScaffold(
@@ -34,14 +31,11 @@ fun PurrytifyAppScaffold(
     isNetworkAvailable: Boolean,
     playerViewModel: PlayerViewModel = hiltViewModel()
 ) {
-    // Get current route to determine if bottom nav should be shown
     val currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route
     
-    // Get device orientation
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
     
-    // Determine if we should show the navigation
     val shouldShowNav = remember(currentRoute) {
         when (currentRoute) {
             Routes.LOGIN, Routes.PLAYER -> false

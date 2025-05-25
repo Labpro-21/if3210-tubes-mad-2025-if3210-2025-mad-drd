@@ -20,10 +20,6 @@ import androidx.compose.ui.unit.dp
 import com.example.purrytify.domain.model.MonthlyAnalytics
 import com.example.purrytify.ui.theme.*
 
-/**
- * Sound Capsule section for the Profile screen
- * Shows all monthly analytics data
- */
 @Composable
 fun SoundCapsuleSection(
     allMonthlyAnalytics: List<MonthlyAnalytics>,

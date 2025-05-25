@@ -22,10 +22,6 @@ import com.example.purrytify.domain.model.TopSong
 import com.example.purrytify.ui.components.LoadingView
 import com.example.purrytify.ui.theme.*
 
-/**
- * Top Songs screen showing detailed song analytics for a specific month/year
- * Now responsive and fully scrollable for all orientations
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TopSongsScreen(

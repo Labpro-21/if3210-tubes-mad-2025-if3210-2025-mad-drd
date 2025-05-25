@@ -20,9 +20,6 @@ import com.example.purrytify.ui.theme.PurrytifyGreen
 import com.example.purrytify.ui.theme.PurrytifyLightGray
 import com.example.purrytify.ui.theme.PurrytifyLighterBlack
 
-/**
- * Bottom navigation bar for main screens
- */
 @Composable
 fun PurrytifyBottomNavigation(
     currentRoute: String?,
@@ -56,13 +53,11 @@ fun PurrytifyBottomNavigation(
         navItems.forEach { item ->
             // Check if current route is home or top songs-related
             val selected = when {
-                // If the current route is home or top songs related, highlight home
                 item.route == Routes.HOME && (
                     currentRoute == Routes.HOME || 
                     currentRoute == Routes.TOP_SONGS_GLOBAL || 
                     currentRoute == Routes.TOP_SONGS_COUNTRY
                 ) -> true
-                // Otherwise do exact matching
                 currentRoute == item.route -> true
                 else -> false
             }

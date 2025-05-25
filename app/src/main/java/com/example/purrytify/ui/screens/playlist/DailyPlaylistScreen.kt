@@ -24,9 +24,6 @@ import com.example.purrytify.ui.components.NoInternetScreen
 import com.example.purrytify.ui.components.PlaylistItemComponent
 import com.example.purrytify.ui.theme.*
 
-/**
- * Screen for displaying the daily playlist
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DailyPlaylistScreen(

@@ -29,11 +29,6 @@ import com.example.purrytify.ui.components.LoadingView
 import com.example.purrytify.ui.theme.*
 import kotlin.math.max
 
-/**
- * Time Listened detail screen showing daily chart and listening statistics for a specific month
- * Using custom Canvas implementation instead of external chart library
- * Now responsive and scrollable for all orientations
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TimeListenedScreen(

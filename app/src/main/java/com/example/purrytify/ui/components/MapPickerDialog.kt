@@ -66,9 +66,6 @@ import org.osmdroid.views.overlay.MapEventsOverlay
 import org.osmdroid.views.overlay.Marker
 import java.util.Locale
 
-/**
- * Dialog with an embedded OSMDroid map for selecting a location
- */
 @Composable
 fun MapPickerDialog(
     isVisible: Boolean,
@@ -267,8 +264,8 @@ fun MapPickerDialog(
                     colors = ButtonDefaults.buttonColors(
                         containerColor = PurrytifyGreen,
                         contentColor = PurrytifyWhite,
-                        disabledContainerColor = PurrytifyGreen.copy(alpha = 0.5f), // Darker green when disabled
-                        disabledContentColor = PurrytifyWhite.copy(alpha = 0.7f)    // Slightly faded text when disabled
+                        disabledContainerColor = PurrytifyGreen.copy(alpha = 0.5f),
+                        disabledContentColor = PurrytifyWhite.copy(alpha = 0.7f)
                     ),
                     enabled = selectedCountryCode != null
                 ) {
@@ -346,9 +343,9 @@ private fun getCountryFromLocation(context: Context, geoPoint: GeoPoint, callbac
             // API 33+ async method
             geocoder.getFromLocation(geoPoint.latitude, geoPoint.longitude, 1) { addresses ->
                 val countryCode = if (addresses.isNotEmpty()) {
-                    addresses[0].countryCode ?: "" // Default to empty string
+                    addresses[0].countryCode ?: ""
                 } else {
-                    "" // Default to empty string
+                    ""
                 }
                 callback(countryCode)
             }
@@ -357,14 +354,14 @@ private fun getCountryFromLocation(context: Context, geoPoint: GeoPoint, callbac
             @Suppress("DEPRECATION")
             val addresses = geocoder.getFromLocation(geoPoint.latitude, geoPoint.longitude, 1)
             val countryCode = if (addresses != null && addresses.isNotEmpty()) {
-                addresses[0].countryCode ?: "" // Default to empty string
+                addresses[0].countryCode ?: ""
             } else {
-                "" // Default to empty string
+                ""
             }
             callback(countryCode)
         }
     } catch (e: Exception) {
         Log.e("MapPicker", "Error getting country: ${e.message}", e)
-        callback("") // Default to empty string on error
+        callback("")
     }
 }

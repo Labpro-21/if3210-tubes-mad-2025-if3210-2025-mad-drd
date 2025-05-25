@@ -227,7 +227,7 @@ fun EditProfileModalBottomSheet(
                     ),
                     shape = RoundedCornerShape(8.dp),
                     singleLine = true,
-                    readOnly = true // Make it read-only
+                    readOnly = true
                 )
 
                 Spacer(modifier = Modifier.height(24.dp))

@@ -56,9 +56,6 @@ import com.example.purrytify.R
 import com.example.purrytify.ui.components.NoInternetScreen
 import com.example.purrytify.ui.theme.*
 
-/**
- * Login screen UI with Poppins typography
- */
 @Composable
 fun LoginScreen(
     onLoginSuccess: () -> Unit,

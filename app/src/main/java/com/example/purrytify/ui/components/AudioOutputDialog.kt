@@ -25,9 +25,6 @@ import com.example.purrytify.domain.model.AudioDeviceInfo
 import com.example.purrytify.domain.model.AudioDeviceType
 import com.example.purrytify.ui.theme.*
 
-/**
- * Improved and responsive audio output device selection dialog
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AudioOutputDialog(
@@ -239,9 +236,6 @@ fun AudioOutputDialog(
     }
 }
 
-/**
- * Individual audio device item - now responsive
- */
 @Composable
 private fun AudioDeviceItem(
     device: AudioDeviceInfo,
@@ -334,9 +328,6 @@ private fun AudioDeviceItem(
     }
 }
 
-/**
- * Get appropriate icon for device type
- */
 private fun getDeviceIcon(type: AudioDeviceType): ImageVector {
     return when (type) {
         AudioDeviceType.BUILT_IN_SPEAKER -> Icons.Default.Speaker

@@ -29,9 +29,6 @@ import com.example.purrytify.ui.screens.player.PlayerViewModel
 import com.example.purrytify.ui.theme.*
 import java.io.File
 
-/**
- * Mini player that appears at the bottom of screens when music is playing
- */
 @Composable
 fun MiniPlayer(
     modifier: Modifier = Modifier,
@@ -111,7 +108,6 @@ fun MiniPlayer(
                                 )
                             }
                             null -> {
-                                // This shouldn't happen, but just in case
                                 Box(
                                     modifier = Modifier
                                         .fillMaxSize()

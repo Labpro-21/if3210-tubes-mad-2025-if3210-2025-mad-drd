@@ -71,7 +71,6 @@ fun LibraryScreen(
             .fillMaxSize()
             .background(PurrytifyBlack)
     ) {
-        // Use a Column with a Box layout to make the header sticky
         Column(
             modifier = Modifier.fillMaxSize()
         ) {

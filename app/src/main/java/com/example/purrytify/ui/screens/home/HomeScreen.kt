@@ -38,9 +38,6 @@ import com.example.purrytify.ui.theme.*
 import com.example.purrytify.util.CountryUtils
 import javax.inject.Inject
 
-/**
- * Home screen with Charts, New Songs, and Recently Played sections
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
@@ -245,9 +242,6 @@ fun HomeScreen(
     }
 }
 
-/**
- * Chart card component used in the Charts section
- */
 @Composable
 fun ChartCard(
     title: String,
@@ -262,34 +256,33 @@ fun ChartCard(
         isGlobal -> {
             // Global top 50 gradient: #1f7973 to #071220
             listOf(
-                Color(0xFF1F7973),  // Top color: #1f7973
-                Color(0xFF071220)   // Bottom color: #071220
+                Color(0xFF1F7973),
+                Color(0xFF071220)
             )
         }
         isDailyPlaylist -> {
             // Daily Playlist gradient: #5E35B1 to #140144
             listOf(
-                Color(0xFF5E35B1),  // Top color: purple
-                Color(0xFF140144)   // Bottom color: deep purple
+                Color(0xFF5E35B1),
+                Color(0xFF140144)
             )
         }
         else -> {
             // Country top 10 gradient: #d95360 to #51090f
             listOf(
-                Color(0xFFD95360),  // Top color: #d95360
-                Color(0xFF51090F)   // Bottom color: #51090f
+                Color(0xFFD95360),
+                Color(0xFF51090F)
             )
         }
     }
 
     Box(
         modifier = Modifier
-            .size(140.dp) // Square size
+            .size(140.dp)
             .clip(RoundedCornerShape(8.dp))
             .background(brush = Brush.verticalGradient(gradientColors))
             .clickable(enabled = isAvailable) { onClick() }
     ) {
-        // "Not Available" overlay if country songs aren't available
         if (!isAvailable) {
             Box(
                 modifier = Modifier

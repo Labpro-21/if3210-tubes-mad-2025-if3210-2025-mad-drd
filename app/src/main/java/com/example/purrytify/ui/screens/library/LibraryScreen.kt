@@ -80,17 +80,15 @@ fun LibraryScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(PurrytifyBlack)
-                    // Add z-index to ensure header stays on top
                     .zIndex(1f)
-                    // Add shadow to create visual separation
                     .shadow(elevation = 4.dp)
             ) {
                 // Header with title and add button
                 Row(
                     modifier = Modifier
-                        .fillMaxWidth()
                         .padding(top = topPadding)
-                        .padding(horizontal = horizontalPadding),
+                        .padding(horizontal = horizontalPadding)
+                        .fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {

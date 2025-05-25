@@ -70,7 +70,6 @@ fun PurrytifyAppScaffold(
             // Left side navigation
             Box(
                 modifier = Modifier
-                    .width(80.dp)
                     .fillMaxHeight()
             ) {
                 PurrytifySideNavigation(

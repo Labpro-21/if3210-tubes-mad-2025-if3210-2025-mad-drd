@@ -46,10 +46,17 @@ class DailyPlaylistViewModel @Inject constructor(
     private val _currentPlayingItem = MutableStateFlow<PlaylistItem?>(null)
     val currentPlayingItem = _currentPlayingItem.asStateFlow()
 
+    // Whether we have cached content
+    private val _hasCache = MutableStateFlow(false)
+    val hasCache = _hasCache.asStateFlow()
+
     // User ID
     private val _userId = MutableStateFlow<Int?>(null)
 
     init {
+        // Check for cached content first
+        checkForCache()
+        
         // Get user ID
         viewModelScope.launch {
             userPreferences.userId.collect { userId ->
@@ -67,6 +74,22 @@ class DailyPlaylistViewModel @Inject constructor(
         viewModelScope.launch {
             playerBridge.currentItem.collect { currentItem ->
                 _currentPlayingItem.value = currentItem
+            }
+        }
+    }
+
+    /**
+     * Check if we have cached playlist content
+     */
+    private fun checkForCache() {
+        viewModelScope.launch {
+            try {
+                val cachedJson = userPreferences.dailyPlaylistJson.firstOrNull()
+                _hasCache.value = !cachedJson.isNullOrBlank()
+                Log.d(TAG, "Has cache: ${_hasCache.value}")
+            } catch (e: Exception) {
+                Log.e(TAG, "Error checking cache: ${e.message}", e)
+                _hasCache.value = false
             }
         }
     }
@@ -182,6 +205,7 @@ class DailyPlaylistViewModel @Inject constructor(
             val playlistJson = gson.toJson(serializableItems)
 
             userPreferences.saveDailyPlaylistInfo(today, playlistJson)
+            _hasCache.value = true // Update cache status
             Log.d(TAG, "Cached playlist for $today")
         } catch (e: Exception) {
             Log.e(TAG, "Error caching playlist: ${e.message}", e)

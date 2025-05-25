@@ -136,7 +136,8 @@ fun PurrytifyNavHost(
                 onBack = { navController.popBackStack() },
                 onNavigateToPlayer = { songId ->
                     navController.navigate(Routes.PLAYER.replace("{songId}", songId))
-                }
+                },
+                isNetworkAvailable = isNetworkAvailable
             )
         }
         

@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.purrytify.domain.model.PlaylistItem
 import com.example.purrytify.ui.components.LoadingView
+import com.example.purrytify.ui.components.NoInternetScreen
 import com.example.purrytify.ui.components.PlaylistItemComponent
 import com.example.purrytify.ui.theme.*
 
@@ -31,14 +32,12 @@ import com.example.purrytify.ui.theme.*
 fun DailyPlaylistScreen(
     onBack: () -> Unit,
     onNavigateToPlayer: (String) -> Unit,
+    isNetworkAvailable: Boolean = true,
     viewModel: DailyPlaylistViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val currentPlayingItem by viewModel.currentPlayingItem.collectAsState()
-    
-    // Note: Removed LaunchedEffect(Unit) to prevent auto-regeneration
-    // The playlist will load automatically through the ViewModel's init block
-    // and will only regenerate if it's a new day or manually refreshed
+    val hasCache by viewModel.hasCache.collectAsState()
     
     Scaffold(
         topBar = {
@@ -60,13 +59,15 @@ fun DailyPlaylistScreen(
                     actionIconContentColor = PurrytifyWhite
                 ),
                 actions = {
-                    // Refresh action
-                    IconButton(onClick = { viewModel.loadDailyPlaylist() }) {
-                        Icon(
-                            imageVector = Icons.Default.Refresh,
-                            contentDescription = "Refresh playlist",
-                            tint = PurrytifyWhite
-                        )
+                    // Only show refresh action if network is available
+                    if (isNetworkAvailable) {
+                        IconButton(onClick = { viewModel.loadDailyPlaylist() }) {
+                            Icon(
+                                imageVector = Icons.Default.Refresh,
+                                contentDescription = "Refresh playlist",
+                                tint = PurrytifyWhite
+                            )
+                        }
                     }
                 }
             )
@@ -79,32 +80,41 @@ fun DailyPlaylistScreen(
                 .background(PurrytifyBlack)
                 .padding(paddingValues)
         ) {
-            when (val state = uiState) {
-                is PlaylistUiState.Loading -> {
-                    LoadingView()
-                }
-                
-                is PlaylistUiState.Empty -> {
-                    EmptyContent()
-                }
-                
-                is PlaylistUiState.Success -> {
-                    PlaylistContent(
-                        items = state.items,
-                        currentPlayingItem = currentPlayingItem,
-                        onItemClick = { item ->
-                            viewModel.playItem(item)
-
-                            onNavigateToPlayer(viewModel.getNavigationId(item))
-                        }
-                    )
-                }
-                
-                is PlaylistUiState.Error -> {
-                    ErrorContent(
-                        message = state.message,
-                        onRetry = { viewModel.loadDailyPlaylist() }
-                    )
+            if (!isNetworkAvailable && !hasCache) {
+                NoInternetScreen()
+            } else {
+                // Show normal content when network is available OR when we have cached content
+                when (val state = uiState) {
+                    is PlaylistUiState.Loading -> {
+                        LoadingView()
+                    }
+                    
+                    is PlaylistUiState.Empty -> {
+                        EmptyContent()
+                    }
+                    
+                    is PlaylistUiState.Success -> {
+                        PlaylistContent(
+                            items = state.items,
+                            currentPlayingItem = currentPlayingItem,
+                            onItemClick = { item ->
+                                viewModel.playItem(item)
+                                onNavigateToPlayer(viewModel.getNavigationId(item))
+                            }
+                        )
+                    }
+                    
+                    is PlaylistUiState.Error -> {
+                        ErrorContent(
+                            message = state.message,
+                            onRetry = { 
+                                if (isNetworkAvailable) {
+                                    viewModel.loadDailyPlaylist() 
+                                }
+                            },
+                            showRetryButton = isNetworkAvailable
+                        )
+                    }
                 }
             }
         }
@@ -192,7 +202,8 @@ fun EmptyContent() {
 @Composable
 fun ErrorContent(
     message: String,
-    onRetry: () -> Unit
+    onRetry: () -> Unit,
+    showRetryButton: Boolean = true
 ) {
     Box(
         modifier = Modifier.fillMaxSize(),
@@ -218,17 +229,19 @@ fun ErrorContent(
                 textAlign = TextAlign.Center
             )
             
-            Spacer(modifier = Modifier.height(24.dp))
-            
-            Button(
-                onClick = onRetry,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = PurrytifyGreen,
-                    contentColor = PurrytifyWhite
-                ),
-                shape = RoundedCornerShape(24.dp)
-            ) {
-                Text("Retry")
+            if (showRetryButton) {
+                Spacer(modifier = Modifier.height(24.dp))
+                
+                Button(
+                    onClick = onRetry,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = PurrytifyGreen,
+                        contentColor = PurrytifyWhite
+                    ),
+                    shape = RoundedCornerShape(24.dp)
+                ) {
+                    Text("Retry")
+                }
             }
         }
     }

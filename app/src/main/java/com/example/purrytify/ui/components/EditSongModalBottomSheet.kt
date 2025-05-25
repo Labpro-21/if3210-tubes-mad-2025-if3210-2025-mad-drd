@@ -7,6 +7,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -18,6 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -51,6 +53,8 @@ fun EditSongModalBottomSheet(
         
         val context = LocalContext.current
         val scope = rememberCoroutineScope()
+        val configuration = LocalConfiguration.current
+        val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
         
         // Audio file picker
         val audioFilePicker = rememberLauncherForActivityResult(
@@ -126,336 +130,354 @@ fun EditSongModalBottomSheet(
                 }
             }
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp, vertical = 16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
+            LazyColumn(
+                modifier = Modifier.fillMaxWidth(),
+                contentPadding = PaddingValues(
+                    horizontal = 24.dp,
+                    vertical = 16.dp
+                ),
+                verticalArrangement = Arrangement.spacedBy(
+                    if (isLandscape) 12.dp else 16.dp
+                ),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 // Title
-                Text(
-                    text = "Edit Song",
-                    style = Typography.titleLarge,
-                    color = PurrytifyWhite,
-                    fontWeight = FontWeight.Bold,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                // Error message from API
-                if (!errorMessage.isNullOrEmpty()) {
+                item {
                     Text(
-                        text = errorMessage,
-                        color = PurritifyRed,
-                        style = Typography.bodyMedium,
+                        text = "Edit Song",
+                        style = Typography.titleLarge,
+                        color = PurrytifyWhite,
+                        fontWeight = FontWeight.Bold,
                         textAlign = TextAlign.Center,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 16.dp)
+                        modifier = Modifier.fillMaxWidth()
                     )
                 }
                 
+                // Error message from API
+                if (!errorMessage.isNullOrEmpty()) {
+                    item {
+                        Text(
+                            text = errorMessage,
+                            color = PurritifyRed,
+                            style = Typography.bodyMedium,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
+                
                 // Upload sections
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    // Artwork upload
-                    Column(
-                        modifier = Modifier
-                            .weight(1f),
-                        horizontalAlignment = Alignment.CenterHorizontally
+                item {
+                    val uploadSectionModifier = if (isLandscape) {
+                        Modifier.fillMaxWidth()
+                    } else {
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 16.dp)
+                    }
+                    
+                    Row(
+                        modifier = uploadSectionModifier,
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .size(120.dp)
-                                .border(
-                                    width = 1.dp,
-                                    color = PurrytifyDarkGray,
-                                    shape = RoundedCornerShape(8.dp)
-                                )
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(PurrytifyBlack)
-                                .clickable { artworkPicker.launch("image/*") },
-                            contentAlignment = Alignment.Center
+                        // Artwork upload
+                        Column(
+                            modifier = Modifier.weight(1f),
+                            horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            if (artworkUri != null) {
-                                // New artwork selected
-                                AsyncImage(
-                                    model = ImageRequest.Builder(LocalContext.current)
-                                        .data(artworkUri)
-                                        .crossfade(true)
-                                        .build(),
-                                    contentDescription = "Song Artwork",
-                                    modifier = Modifier.fillMaxSize(),
-                                    contentScale = ContentScale.Crop
-                                )
-                            } else if (song.artworkUri != null) {
-                                // Show existing artwork
-                                AsyncImage(
-                                    model = ImageRequest.Builder(LocalContext.current)
-                                        .data(song.artworkUri)
-                                        .crossfade(true)
-                                        .build(),
-                                    contentDescription = "Song Artwork",
-                                    modifier = Modifier.fillMaxSize(),
-                                    contentScale = ContentScale.Crop
-                                )
-                            } else {
-                                // No artwork
+                            val uploadBoxSize = if (isLandscape) 100.dp else 120.dp
+                            
+                            Box(
+                                modifier = Modifier
+                                    .size(uploadBoxSize)
+                                    .border(
+                                        width = 1.dp,
+                                        color = PurrytifyDarkGray,
+                                        shape = RoundedCornerShape(8.dp)
+                                    )
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(PurrytifyBlack)
+                                    .clickable { artworkPicker.launch("image/*") },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                if (artworkUri != null) {
+                                    // New artwork selected
+                                    AsyncImage(
+                                        model = ImageRequest.Builder(LocalContext.current)
+                                            .data(artworkUri)
+                                            .crossfade(true)
+                                            .build(),
+                                        contentDescription = "Song Artwork",
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                } else if (song.artworkUri != null) {
+                                    // Show existing artwork
+                                    AsyncImage(
+                                        model = ImageRequest.Builder(LocalContext.current)
+                                            .data(song.artworkUri)
+                                            .crossfade(true)
+                                            .build(),
+                                        contentDescription = "Song Artwork",
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                } else {
+                                    // No artwork
+                                    Column(
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        verticalArrangement = Arrangement.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Image,
+                                            contentDescription = "Upload Artwork",
+                                            tint = PurrytifyLightGray,
+                                            modifier = Modifier.size(if (isLandscape) 28.dp else 36.dp)
+                                        )
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Text(
+                                            text = "Upload Photo",
+                                            color = PurrytifyLightGray,
+                                            style = Typography.bodySmall
+                                        )
+                                    }
+                                }
+                            }
+                            
+                            Spacer(modifier = Modifier.height(4.dp))
+                            
+                            Text(
+                                text = "Cover Art (Optional)",
+                                color = PurrytifyLightGray,
+                                style = Typography.bodySmall
+                            )
+                        }
+                        
+                        // Audio file upload
+                        Column(
+                            modifier = Modifier.weight(1f),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            val uploadBoxSize = if (isLandscape) 100.dp else 120.dp
+                            
+                            Box(
+                                modifier = Modifier
+                                    .size(uploadBoxSize)
+                                    .border(
+                                        width = 1.dp,
+                                        color = PurrytifyDarkGray,
+                                        shape = RoundedCornerShape(8.dp)
+                                    )
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(PurrytifyBlack)
+                                    .clickable { audioFilePicker.launch("audio/*") },
+                                contentAlignment = Alignment.Center
+                            ) {
                                 Column(
                                     horizontalAlignment = Alignment.CenterHorizontally,
                                     verticalArrangement = Arrangement.Center
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Default.Image,
-                                        contentDescription = "Upload Artwork",
-                                        tint = PurrytifyLightGray,
-                                        modifier = Modifier.size(36.dp)
+                                        imageVector = Icons.Default.AudioFile,
+                                        contentDescription = "Upload Audio",
+                                        tint = if (audioUri != null) PurrytifyGreen else PurrytifyLightGray,
+                                        modifier = Modifier.size(if (isLandscape) 28.dp else 36.dp)
                                     )
                                     Spacer(modifier = Modifier.height(8.dp))
+                                    
+                                    // Show text based on new audio or existing
+                                    val durationText = if (audioUri != null) {
+                                        duration?.let { 
+                                            val minutes = it / 1000 / 60
+                                            val seconds = (it / 1000) % 60
+                                            String.format("%02d:%02d", minutes, seconds)
+                                        } ?: "Selected"
+                                    } else {
+                                        song.formattedDuration
+                                    }
+                                    
                                     Text(
-                                        text = "Upload Photo",
-                                        color = PurrytifyLightGray,
+                                        text = durationText,
+                                        color = if (audioUri != null) PurrytifyGreen else PurrytifyLightGray,
                                         style = Typography.bodySmall
                                     )
                                 }
                             }
-                        }
-                        
-                        Spacer(modifier = Modifier.height(4.dp))
-                        
-                        Text(
-                            text = "Cover Art (Optional)",
-                            color = PurrytifyLightGray,
-                            style = Typography.bodySmall
-                        )
-                    }
-                    
-                    // Audio file upload
-                    Column(
-                        modifier = Modifier
-                            .weight(1f),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(120.dp)
-                                .border(
-                                    width = 1.dp,
-                                    color = PurrytifyDarkGray,
-                                    shape = RoundedCornerShape(8.dp)
-                                )
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(PurrytifyBlack)
-                                .clickable { audioFilePicker.launch("audio/*") },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.AudioFile,
-                                    contentDescription = "Upload Audio",
-                                    tint = if (audioUri != null) PurrytifyGreen else PurrytifyLightGray,
-                                    modifier = Modifier.size(36.dp)
-                                )
-                                Spacer(modifier = Modifier.height(8.dp))
-                                
-                                // Show text based on new audio or existing
-                                val durationText = if (audioUri != null) {
-                                    duration?.let { 
-                                        val minutes = it / 1000 / 60
-                                        val seconds = (it / 1000) % 60
-                                        String.format("%02d:%02d", minutes, seconds)
-                                    } ?: "Selected"
-                                } else {
-                                    song.formattedDuration
-                                }
-                                
-                                Text(
-                                    text = durationText,
-                                    color = if (audioUri != null) PurrytifyGreen else PurrytifyLightGray,
-                                    style = Typography.bodySmall
-                                )
-                            }
-                        }
-                        
-                        Spacer(modifier = Modifier.height(4.dp))
                             
-                        Text(
-                            text = "Audio File (Optional)",
-                            color = PurrytifyLightGray,
-                            style = Typography.bodySmall
-                        )
+                            Spacer(modifier = Modifier.height(4.dp))
+                                
+                            Text(
+                                text = "Audio File (Optional)",
+                                color = PurrytifyLightGray,
+                                style = Typography.bodySmall
+                            )
+                        }
                     }
                 }
-                
-                Spacer(modifier = Modifier.height(16.dp))
                 
                 // Title field
-                Text(
-                    text = "Title",
-                    style = Typography.bodyMedium,
-                    color = PurrytifyWhite,
-                    modifier = Modifier
-                        .fillMaxWidth(),
-                    textAlign = TextAlign.Start
-                )
+                item {
+                    Column {
+                        Text(
+                            text = "Title",
+                            style = Typography.bodyMedium,
+                            color = PurrytifyWhite,
+                            modifier = Modifier.fillMaxWidth(),
+                            textAlign = TextAlign.Start
+                        )
 
-                Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(8.dp))
 
-                OutlinedTextField(
-                    value = title,
-                    onValueChange = { 
-                        title = it
-                        if (titleError != null) titleError = null
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        unfocusedContainerColor = PurrytifyBlack,
-                        focusedContainerColor = PurrytifyBlack,
-                        errorContainerColor = PurrytifyBlack,
-                        unfocusedBorderColor = PurrytifyDarkGray,
-                        focusedBorderColor = PurrytifyGreen,
-                        errorBorderColor = PurritifyRed,
-                        unfocusedTextColor = PurrytifyWhite,
-                        focusedTextColor = PurrytifyWhite,
-                        errorTextColor = PurrytifyWhite,
-                        cursorColor = PurrytifyWhite
-                    ),
-                    placeholder = { Text("Title", color = PurrytifyLightGray) },
-                    shape = RoundedCornerShape(8.dp),
-                    singleLine = true,
-                    isError = titleError != null
-                )
-                
-                // Title error
-                if (titleError != null) {
-                    Text(
-                        text = titleError!!,
-                        color = PurritifyRed,
-                        style = Typography.bodySmall,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 4.dp, start = 4.dp)
-                    )
+                        OutlinedTextField(
+                            value = title,
+                            onValueChange = { 
+                                title = it
+                                if (titleError != null) titleError = null
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                unfocusedContainerColor = PurrytifyBlack,
+                                focusedContainerColor = PurrytifyBlack,
+                                errorContainerColor = PurrytifyBlack,
+                                unfocusedBorderColor = PurrytifyDarkGray,
+                                focusedBorderColor = PurrytifyGreen,
+                                errorBorderColor = PurritifyRed,
+                                unfocusedTextColor = PurrytifyWhite,
+                                focusedTextColor = PurrytifyWhite,
+                                errorTextColor = PurrytifyWhite,
+                                cursorColor = PurrytifyWhite
+                            ),
+                            placeholder = { Text("Title", color = PurrytifyLightGray) },
+                            shape = RoundedCornerShape(8.dp),
+                            singleLine = true,
+                            isError = titleError != null
+                        )
+                        
+                        // Title error
+                        if (titleError != null) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = titleError!!,
+                                color = PurritifyRed,
+                                style = Typography.bodySmall,
+                                modifier = Modifier.padding(start = 4.dp)
+                            )
+                        }
+                    }
                 }
-
-                Spacer(modifier = Modifier.height(16.dp))
 
                 // Artist field
-                Text(
-                    text = "Artist",
-                    style = Typography.bodyMedium,
-                    color = PurrytifyWhite,
-                    modifier = Modifier
-                        .fillMaxWidth(),
-                    textAlign = TextAlign.Start
-                )
+                item {
+                    Column {
+                        Text(
+                            text = "Artist",
+                            style = Typography.bodyMedium,
+                            color = PurrytifyWhite,
+                            modifier = Modifier.fillMaxWidth(),
+                            textAlign = TextAlign.Start
+                        )
 
-                Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(8.dp))
 
-                OutlinedTextField(
-                    value = artist,
-                    onValueChange = { 
-                        artist = it
-                        if (artistError != null) artistError = null
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        unfocusedContainerColor = PurrytifyBlack,
-                        focusedContainerColor = PurrytifyBlack,
-                        errorContainerColor = PurrytifyBlack,
-                        unfocusedBorderColor = PurrytifyDarkGray,
-                        focusedBorderColor = PurrytifyGreen,
-                        errorBorderColor = PurritifyRed,
-                        unfocusedTextColor = PurrytifyWhite,
-                        focusedTextColor = PurrytifyWhite,
-                        errorTextColor = PurrytifyWhite,
-                        cursorColor = PurrytifyWhite
-                    ),
-                    placeholder = { Text("Artist", color = PurrytifyLightGray) },
-                    shape = RoundedCornerShape(8.dp),
-                    singleLine = true,
-                    isError = artistError != null
-                )
-                
-                // Artist error
-                if (artistError != null) {
-                    Text(
-                        text = artistError!!,
-                        color = PurritifyRed,
-                        style = Typography.bodySmall,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 4.dp, start = 4.dp)
-                    )
+                        OutlinedTextField(
+                            value = artist,
+                            onValueChange = { 
+                                artist = it
+                                if (artistError != null) artistError = null
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                unfocusedContainerColor = PurrytifyBlack,
+                                focusedContainerColor = PurrytifyBlack,
+                                errorContainerColor = PurrytifyBlack,
+                                unfocusedBorderColor = PurrytifyDarkGray,
+                                focusedBorderColor = PurrytifyGreen,
+                                errorBorderColor = PurritifyRed,
+                                unfocusedTextColor = PurrytifyWhite,
+                                focusedTextColor = PurrytifyWhite,
+                                errorTextColor = PurrytifyWhite,
+                                cursorColor = PurrytifyWhite
+                            ),
+                            placeholder = { Text("Artist", color = PurrytifyLightGray) },
+                            shape = RoundedCornerShape(8.dp),
+                            singleLine = true,
+                            isError = artistError != null
+                        )
+                        
+                        // Artist error
+                        if (artistError != null) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = artistError!!,
+                                color = PurritifyRed,
+                                style = Typography.bodySmall,
+                                modifier = Modifier.padding(start = 4.dp)
+                            )
+                        }
+                    }
                 }
                 
-                Spacer(modifier = Modifier.height(48.dp))
-                
                 // Save button
-                Button(
-                    onClick = { handleSave() },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(48.dp),
-                    shape = CircleShape,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = PurrytifyGreen,
-                        contentColor = PurrytifyWhite,
-                        disabledContainerColor = PurrytifyGreen.copy(alpha = 0.5f)
-                    ),
-                    enabled = !isLoading
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center
+                item {
+                    Button(
+                        onClick = { handleSave() },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp),
+                        shape = CircleShape,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = PurrytifyGreen,
+                            contentColor = PurrytifyWhite,
+                            disabledContainerColor = PurrytifyGreen.copy(alpha = 0.5f)
+                        ),
+                        enabled = !isLoading
                     ) {
-                        if (isLoading) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(20.dp),
-                                color = PurrytifyWhite.copy(alpha = 0.7f),
-                                strokeWidth = 2.dp
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            if (isLoading) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(20.dp),
+                                    color = PurrytifyWhite.copy(alpha = 0.7f),
+                                    strokeWidth = 2.dp
+                                )
+                                Spacer(modifier = Modifier.width(12.dp))
+                            }
+                            Text(
+                                text = "Save",
+                                style = Typography.bodyLarge,
+                                fontWeight = FontWeight.Medium
                             )
-                            Spacer(modifier = Modifier.width(12.dp))
                         }
+                    }
+                }
+
+                // Cancel button
+                item {
+                    Button(
+                        onClick = onDismiss,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp),
+                        shape = CircleShape,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = PurrytifyDarkGray,
+                            contentColor = PurrytifyWhite
+                        )
+                    ) {
                         Text(
-                            text = "Save",
+                            text = "Cancel",
                             style = Typography.bodyLarge,
                             fontWeight = FontWeight.Medium
                         )
                     }
                 }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Cancel button
-                Button(
-                    onClick = onDismiss,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(48.dp),
-                    shape = CircleShape,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = PurrytifyDarkGray,
-                        contentColor = PurrytifyWhite
-                    )
-                ) {
-                    Text(
-                        text = "Cancel",
-                        style = Typography.bodyLarge,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
                 
-                Spacer(modifier = Modifier.height(32.dp))
+                // Bottom spacing
+                item {
+                    Spacer(modifier = Modifier.height(32.dp))
+                }
             }
         }
     }

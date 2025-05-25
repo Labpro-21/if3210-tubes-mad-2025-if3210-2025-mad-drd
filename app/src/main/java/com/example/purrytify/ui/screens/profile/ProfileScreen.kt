@@ -2,6 +2,7 @@ package com.example.purrytify.ui.screens.profile
 
 import android.content.Context
 import android.net.Uri
+import android.widget.Space
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -143,15 +144,13 @@ fun ProfileScreen(
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(horizontal = 24.dp),
+                        .padding(horizontal = 24.dp, vertical = 32.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    contentPadding = PaddingValues(bottom = 32.dp)
                 ) {
-                    // Top spacing
                     item {
                         Spacer(modifier = Modifier.height(32.dp))
                     }
-                    
+
                     // Profile picture
                     item {
                         Box(
@@ -310,6 +309,10 @@ fun ProfileScreen(
                             onTopSongClick = { year, month -> onNavigateToTopSongs(year, month) },
                             onExportClick = { year, month -> viewModel.exportAnalytics(year, month) }
                         )
+                    }
+
+                    item {
+                        Spacer(modifier = Modifier.height(32.dp))
                     }
                 }
                 

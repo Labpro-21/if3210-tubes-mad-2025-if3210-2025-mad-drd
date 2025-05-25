@@ -2,6 +2,7 @@ package com.example.purrytify.di
 
 import android.content.Context
 import com.example.purrytify.data.repository.PlayerRepository
+import com.example.purrytify.data.repository.SongRepository
 import com.example.purrytify.domain.player.PlayerBridge
 import com.example.purrytify.util.AudioOutputManager
 import dagger.Module
@@ -26,10 +27,11 @@ object PlayerModule {
     @Singleton
     fun providePlayerBridge(
         playerRepository: PlayerRepository,
+        songRepository: SongRepository,
         listeningSessionTracker: ListeningSessionTracker,
         @ApplicationContext context: Context
     ): PlayerBridge {
-        return PlayerBridge(playerRepository, listeningSessionTracker, context)
+        return PlayerBridge(playerRepository, songRepository, listeningSessionTracker, context)
     }
     
     /**

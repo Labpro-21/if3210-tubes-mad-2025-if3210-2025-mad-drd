@@ -4,9 +4,11 @@ import android.content.Context
 import android.content.Intent
 import android.util.Log
 import com.example.purrytify.data.repository.PlayerRepository
+import com.example.purrytify.data.repository.SongRepository
 import com.example.purrytify.domain.analytics.ListeningSessionTracker
 import com.example.purrytify.domain.model.PlaylistItem
 import com.example.purrytify.domain.model.Song
+import com.example.purrytify.domain.util.Result
 import com.example.purrytify.service.MusicService
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
@@ -25,6 +27,7 @@ import javax.inject.Singleton
 @Singleton
 class PlayerBridge @Inject constructor(
     private val playerRepository: PlayerRepository,
+    private val songRepository: SongRepository,
     private val listeningSessionTracker: ListeningSessionTracker,
     @ApplicationContext private val context: Context
 ) {
@@ -186,8 +189,30 @@ class PlayerBridge @Inject constructor(
         if (userId != null) {
             Log.d(TAG, "Starting analytics session for: ${item.title}")
             listeningSessionTracker.startSession(item, userId)
+            
+            // Update recently played timestamp for local songs
+            if (item is PlaylistItem.LocalSong) {
+                bridgeScope.launch {
+                    try {
+                        Log.d(TAG, "Updating last played timestamp for local song: ${item.title}")
+                        when (val result = songRepository.updateLastPlayed(item.id, userId)) {
+                            is Result.Success -> {
+                                Log.d(TAG, "Successfully updated last played timestamp for: ${item.title}")
+                            }
+                            is Result.Error -> {
+                                Log.e(TAG, "Error updating last played timestamp: ${result.message}")
+                            }
+                            is Result.Loading -> {
+                                // No-op
+                            }
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Exception updating last played timestamp: ${e.message}", e)
+                    }
+                }
+            }
         } else {
-            Log.w(TAG, "No user ID available for analytics tracking")
+            Log.w(TAG, "No user ID available for analytics tracking and recently played update")
         }
         
         _currentItem.value = item

@@ -55,6 +55,9 @@ class MusicService : Service() {
     private var currentPosition: Long = 0
     private var duration: Long = 0
     
+    // Track if service is in foreground
+    private var isForegroundService = false
+    
     // Broadcast receiver for notification actions
     private val notificationReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -65,8 +68,7 @@ class MusicService : Service() {
                 MediaNotificationManager.ACTION_PREVIOUS -> playerBridge.previous()
                 MediaNotificationManager.ACTION_STOP -> {
                     playerBridge.stop()
-                    stopForeground(true)
-                    stopSelf()
+                    stopForegroundAndService()
                 }
             }
         }
@@ -94,8 +96,7 @@ class MusicService : Service() {
         
         override fun onStop() {
             playerBridge.stop()
-            stopForeground(true)
-            stopSelf()
+            stopForegroundAndService()
         }
         
         override fun onSeekTo(pos: Long) {
@@ -253,7 +254,7 @@ class MusicService : Service() {
     private fun updateNotification() {
         // If there's no current item, no need for notification
         if (currentItem == null) {
-            stopForeground(true)
+            stopForegroundAndService()
             return
         }
         
@@ -280,13 +281,53 @@ class MusicService : Service() {
      * Start foreground service with notification
      */
     private fun startForeground() {
-        val notification = notificationManager.getCurrentNotification() ?: return
-        startForeground(1138, notification)
+        if (!isForegroundService) {
+            val notification = notificationManager.getCurrentNotification() ?: return
+            try {
+                startForeground(1138, notification)
+                isForegroundService = true
+                Log.d(TAG, "Started foreground service")
+            } catch (e: Exception) {
+                Log.e(TAG, "Error starting foreground service: ${e.message}", e)
+            }
+        }
+    }
+    
+    /**
+     * Stop foreground service and optionally stop the service
+     */
+    private fun stopForegroundAndService() {
+        Log.d(TAG, "Stopping foreground service and cleaning up")
+        
+        try {
+            if (isForegroundService) {
+                stopForeground(true)
+                isForegroundService = false
+                Log.d(TAG, "Stopped foreground service")
+            }
+            
+            // Cancel notification
+            notificationManager.cancelNotification()
+            
+            // Stop the service
+            stopSelf()
+        } catch (e: Exception) {
+            Log.e(TAG, "Error stopping foreground service: ${e.message}", e)
+        }
+    }
+    
+    /**
+     * Public method to stop foreground service (called from MusicServiceConnection)
+     */
+    fun stopForegroundService() {
+        Log.d(TAG, "Public method called to stop foreground service")
+        stopForegroundAndService()
     }
     
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         // Handle service start command
-        return START_STICKY
+        // Return START_NOT_STICKY so the service won't restart if killed when app is closed
+        return START_NOT_STICKY
     }
     
     override fun onBind(intent: Intent): IBinder {
@@ -296,17 +337,34 @@ class MusicService : Service() {
     override fun onDestroy() {
         Log.d(TAG, "Music service destroyed")
         
-        // Release resources
-        mediaSession.release()
         try {
-            unregisterReceiver(notificationReceiver)
+            // Stop foreground if still running
+            if (isForegroundService) {
+                stopForeground(true)
+                isForegroundService = false
+            }
+            
+            // Cancel notification
+            notificationManager.cancelNotification()
+            
+            // Release media session
+            mediaSession.release()
+            
+            // Unregister receiver
+            try {
+                unregisterReceiver(notificationReceiver)
+            } catch (e: Exception) {
+                // Receiver might not be registered
+                Log.e(TAG, "Error unregistering receiver: ${e.message}")
+            }
+            
+            // Cancel all coroutines
+            serviceScope.cancel()
+            
+            Log.d(TAG, "Music service cleanup completed")
         } catch (e: Exception) {
-            // Receiver might not be registered
-            Log.e(TAG, "Error unregistering receiver: ${e.message}")
+            Log.e(TAG, "Error during service destruction: ${e.message}", e)
         }
-        
-        // Cancel all coroutines
-        serviceScope.cancel()
         
         super.onDestroy()
     }

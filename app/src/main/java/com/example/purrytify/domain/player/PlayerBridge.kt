@@ -396,6 +396,45 @@ class PlayerBridge @Inject constructor(
     }
     
     /**
+     * Stop playback specifically when app is closing from memory
+     * This method is called when the app is being terminated
+     */
+    fun stopForAppClosure() {
+        Log.d(TAG, "Stopping playback due to app closure")
+        
+        try {
+            // End analytics session synchronously to ensure it's recorded before app termination
+            listeningSessionTracker.endCurrentSessionSynchronously()
+            
+            // Stop player repository
+            playerRepository.stop()
+            
+            // Clear all state
+            _currentItem.value = null
+            _queue.value = emptyList()
+            _currentIndex.value = 0
+            _progress.value = 0f
+            _currentPosition.value = 0L
+            _duration.value = 0L
+            _playbackContext.value = PlaybackContext.None
+            lastIsPlaying = false
+            lastPosition = 0L
+            
+            // Stop music service
+            try {
+                val serviceIntent = Intent(context, MusicService::class.java)
+                context.stopService(serviceIntent)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error stopping music service: ${e.message}", e)
+            }
+            
+            Log.d(TAG, "Playback stopped successfully due to app closure")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error stopping playback for app closure: ${e.message}", e)
+        }
+    }
+    
+    /**
      * Check if the specified item is currently playing
      */
     fun isItemPlaying(itemId: String): Boolean {

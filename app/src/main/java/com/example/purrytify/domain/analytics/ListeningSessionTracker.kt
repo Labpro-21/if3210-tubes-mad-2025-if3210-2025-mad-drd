@@ -144,6 +144,70 @@ class ListeningSessionTracker @Inject constructor(
     }
     
     /**
+     * Synchronously end the current session and record analytics
+     * This method is specifically for app closure scenarios where we need to ensure
+     * the session is recorded before the app is terminated
+     */
+    fun endCurrentSessionSynchronously() {
+        Log.d(TAG, "Ending session synchronously for app closure")
+        
+        try {
+            // Use runBlocking to ensure this completes before the method returns
+            runBlocking {
+                sessionMutex.withLock {
+                    val item = currentSessionItem ?: return@withLock
+                    val userId = currentUserId ?: return@withLock
+                    
+                    // Add any remaining listening time if session is active
+                    if (isSessionActive && currentSessionStartTime > 0) {
+                        val currentTime = System.currentTimeMillis()
+                        val segmentDurationMs = currentTime - currentSessionStartTime
+                        totalListeningTimeMs += segmentDurationMs
+                        
+                        Log.d(TAG, "Adding final segment duration for app closure: ${segmentDurationMs}ms")
+                    }
+                    
+                    // Record the session if there was actual listening time (minimum 1 second to avoid noise)
+                    if (totalListeningTimeMs >= 1000) { // At least 1 second = 1000 milliseconds
+                        Log.d(TAG, "Recording session synchronously for app closure: ${item.title}")
+                        Log.d(TAG, "Total listening time: ${totalListeningTimeMs}ms (${totalListeningTimeMs/1000.0} seconds, ${totalListeningTimeMs/60000.0} minutes)")
+                        
+                        try {
+                            // Use runBlocking to ensure this database operation completes
+                            runBlocking {
+                                analyticsRepository.recordListeningSession(
+                                    userId = userId,
+                                    songId = when (item) {
+                                        is PlaylistItem.LocalSong -> item.id
+                                        is PlaylistItem.OnlineSong -> item.originalId
+                                    },
+                                    songTitle = item.title,
+                                    artistName = item.artist,
+                                    listeningDurationMs = totalListeningTimeMs
+                                )
+                            }
+                            Log.d(TAG, "Successfully recorded listening session synchronously with duration: ${totalListeningTimeMs}ms")
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Error recording listening session synchronously: ${e.message}", e)
+                        }
+                    } else {
+                        Log.d(TAG, "Session too short (${totalListeningTimeMs}ms), not recording for app closure")
+                    }
+                    
+                    // Reset session data
+                    currentSessionItem = null
+                    currentUserId = null
+                    currentSessionStartTime = 0L
+                    totalListeningTimeMs = 0L
+                    isSessionActive = false
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error in endCurrentSessionSynchronously: ${e.message}", e)
+        }
+    }
+    
+    /**
      * Handle song completion (song finished playing)
      */
     fun onSongCompleted() {

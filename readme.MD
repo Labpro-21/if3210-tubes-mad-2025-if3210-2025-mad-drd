@@ -61,6 +61,18 @@ Screenshot Player
 
 ![Screenshot Player](screenshots/Player.jpg) 
 
+Screenshot QR Link
+
+![Screenshot Player](screenshots/qr.jpg) 
+
+Screenshot top 10 local songs
+
+![Screenshot Player](screenshots/top10.jpg) 
+
+Screenshot Upload Song
+
+![Screenshot Player](screenshots/upload.jpg) 
+
 ## Pembagian Kerja Anggota Kelompok dan Jam Pengerjaan
 | No. | NIM | Nama | Kontribusi | Jam Persiapan & Pengerjaan |
 | :-- | :-- | :--- | :----------- | :----------------------- |

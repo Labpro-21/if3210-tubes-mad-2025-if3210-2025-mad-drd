@@ -290,7 +290,7 @@ class ProfileViewModel @Inject constructor(
     }
     
     /**
-     * Export analytics for a specific month
+     * Export analytics for a specific month to local Downloads folder
      */
     fun exportAnalytics(year: Int, month: Int) {
         val userId = _userId.value ?: return
@@ -299,18 +299,46 @@ class ProfileViewModel @Inject constructor(
             try {
                 _isExporting.value = true
                 
-                Log.d(TAG, "Starting analytics export for $year-$month")
+                Log.d(TAG, "Starting local analytics export for $year-$month")
+                
+                val success = exportManager.exportAndSaveAnalytics(userId, year, month)
+                
+                if (success) {
+                    Log.d(TAG, "Analytics export to Downloads completed successfully")
+                } else {
+                    Log.e(TAG, "Analytics export to Downloads failed")
+                }
+                
+            } catch (e: Exception) {
+                Log.e(TAG, "Error exporting analytics to Downloads: ${e.message}", e)
+            } finally {
+                _isExporting.value = false
+            }
+        }
+    }
+    
+    /**
+     * Share analytics for a specific month via system share sheet
+     */
+    fun shareAnalytics(year: Int, month: Int) {
+        val userId = _userId.value ?: return
+        
+        viewModelScope.launch {
+            try {
+                _isExporting.value = true
+                
+                Log.d(TAG, "Starting analytics share for $year-$month")
                 
                 val success = exportManager.exportAndShareAnalytics(userId, year, month)
                 
                 if (success) {
-                    Log.d(TAG, "Analytics export completed successfully")
+                    Log.d(TAG, "Analytics share completed successfully")
                 } else {
-                    Log.e(TAG, "Analytics export failed")
+                    Log.e(TAG, "Analytics share failed")
                 }
                 
             } catch (e: Exception) {
-                Log.e(TAG, "Error exporting analytics: ${e.message}", e)
+                Log.e(TAG, "Error sharing analytics: ${e.message}", e)
             } finally {
                 _isExporting.value = false
             }

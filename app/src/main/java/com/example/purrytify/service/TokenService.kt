@@ -8,6 +8,8 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import com.example.purrytify.data.repository.AuthRepository
+import com.example.purrytify.data.repository.LogoutReason
+import com.example.purrytify.data.repository.NavigationEventRepository
 import com.example.purrytify.worker.TokenRefreshWorker
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
@@ -25,6 +27,7 @@ import javax.inject.Singleton
 class TokenService @Inject constructor(
     @ApplicationContext private val context: Context,
     private val authRepository: AuthRepository,
+    private val navigationEventRepository: NavigationEventRepository,
     private val externalScope: CoroutineScope
 ) {
     // The JWT token expires after 5 minutes (300 seconds)
@@ -93,11 +96,18 @@ class TokenService @Inject constructor(
                         }
                         WorkInfo.State.FAILED -> {
                             // Token refresh failed, user needs to login again
-                            Log.d(TAG, "Token refresh failed, logging out user")
+                            Log.d(TAG, "Token refresh failed, logging out user and emitting logout event")
+                            
+                            // Logout the user (clear tokens)
                             authRepository.logout()
 
                             // Stop the worker since user is logged out
                             stopTokenCheck()
+                            
+                            // Emit logout event for UI navigation
+                            navigationEventRepository.emitLogoutEvent(LogoutReason.TOKEN_REFRESH_FAILED)
+                            
+                            Log.d(TAG, "Logout event emitted due to token refresh failure")
                         }
                         else -> {
                             // Other states like ENQUEUED, RUNNING, BLOCKED, CANCELLED

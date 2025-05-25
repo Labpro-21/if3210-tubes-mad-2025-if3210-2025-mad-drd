@@ -18,7 +18,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.compose.rememberNavController
+import com.example.purrytify.data.repository.LogoutReason
+import com.example.purrytify.data.repository.NavigationEvent
+import com.example.purrytify.data.repository.NavigationEventRepository
 import com.example.purrytify.service.MusicServiceConnection
 import com.example.purrytify.ui.navigation.PurrytifyAppScaffold
 import com.example.purrytify.ui.navigation.Routes
@@ -28,6 +32,7 @@ import com.example.purrytify.ui.theme.PurrytifyTheme
 import com.example.purrytify.util.DeepLinkHandler
 import com.example.purrytify.util.NetworkManager
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -41,6 +46,9 @@ class MainActivity : ComponentActivity() {
     
     @Inject
     lateinit var deepLinkHandler: DeepLinkHandler
+    
+    @Inject
+    lateinit var navigationEventRepository: NavigationEventRepository
 
     private val viewModel: MainViewModel by viewModels()
     private val playerViewModel: PlayerViewModel by viewModels()
@@ -79,6 +87,9 @@ class MainActivity : ComponentActivity() {
             }
         }
 
+        // Observe navigation events for logout handling
+        observeNavigationEvents()
+
         setContent {
             PurrytifyTheme {
                 // Observe network availability
@@ -106,6 +117,61 @@ class MainActivity : ComponentActivity() {
         
         // Handle deep link from intent after UI is set up
         handleDeepLinkFromIntent(intent)
+    }
+    
+    /**
+     * Observe navigation events to handle logout and other navigation requirements
+     */
+    private fun observeNavigationEvents() {
+        lifecycleScope.launch {
+            navigationEventRepository.navigationEvents.collect { event ->
+                when (event) {
+                    is NavigationEvent.Logout -> {
+                        handleLogoutEvent(event.reason)
+                    }
+                    is NavigationEvent.NavigateToRoute -> {
+                        // Handle other navigation events if needed in the future
+                        android.util.Log.d("MainActivity", "Navigation event to route: ${event.route}")
+                    }
+                }
+            }
+        }
+    }
+    
+    /**
+     * Handle logout event by showing appropriate message and restarting the activity
+     * to reset the navigation state and go to login screen
+     */
+    private fun handleLogoutEvent(reason: LogoutReason) {
+        android.util.Log.d("MainActivity", "Handling logout event with reason: $reason")
+        
+        // Show appropriate message to user based on logout reason
+        val message = when (reason) {
+            LogoutReason.TOKEN_REFRESH_FAILED -> "Session expired. Please log in again."
+            LogoutReason.TOKEN_EXPIRED -> "Your session has expired. Please log in again."
+            LogoutReason.INVALID_TOKEN -> "Authentication error. Please log in again."
+            LogoutReason.NETWORK_ERROR -> "Network error. Please check your connection and log in again."
+            LogoutReason.USER_INITIATED -> "Logged out successfully."
+        }
+        
+        // Show toast message
+        Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+        
+        // Stop any ongoing music playback
+        playerViewModel.stopPlayback()
+        
+        // Restart activity to reset navigation state and trigger auth check
+        // This will cause MainViewModel to re-check auth status and navigate to login
+        lifecycleScope.launch {
+            // Small delay to ensure the toast is shown
+            kotlinx.coroutines.delay(500)
+            
+            // Restart the activity to reset navigation state
+            val intent = Intent(this@MainActivity, MainActivity::class.java)
+            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            startActivity(intent)
+            finish()
+        }
     }
     
     override fun onNewIntent(intent: Intent) {

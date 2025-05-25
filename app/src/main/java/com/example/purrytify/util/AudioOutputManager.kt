@@ -23,6 +23,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
+import com.example.purrytify.domain.model.AudioDeviceInfo as LocalAudioDeviceInfo
 
 /**
  * AudioOutputManager that uses ExoPlayer's setPreferredAudioDevice for proper audio routing
@@ -38,19 +39,19 @@ class AudioOutputManager @Inject constructor(
     private val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
     
     // Available audio devices
-    private val _availableDevices = MutableStateFlow<List<com.example.purrytify.domain.model.AudioDeviceInfo>>(emptyList())
-    val availableDevices: StateFlow<List<com.example.purrytify.domain.model.AudioDeviceInfo>> = _availableDevices.asStateFlow()
+    private val _availableDevices = MutableStateFlow<List<LocalAudioDeviceInfo>>(emptyList())
+    val availableDevices: StateFlow<List<LocalAudioDeviceInfo>> = _availableDevices.asStateFlow()
     
     // Currently active device
-    private val _activeDevice = MutableStateFlow<com.example.purrytify.domain.model.AudioDeviceInfo?>(null)
-    val activeDevice: StateFlow<com.example.purrytify.domain.model.AudioDeviceInfo?> = _activeDevice.asStateFlow()
+    private val _activeDevice = MutableStateFlow<LocalAudioDeviceInfo?>(null)
+    val activeDevice: StateFlow<LocalAudioDeviceInfo?> = _activeDevice.asStateFlow()
     
     // Error messages
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
     
     // Track the current preferred device set in ExoPlayer
-    private var currentPreferredDevice: com.example.purrytify.domain.model.AudioDeviceInfo? = null
+    private var currentPreferredDevice: LocalAudioDeviceInfo? = null
     
     // Device change receiver
     private val deviceChangeReceiver = object : BroadcastReceiver() {
@@ -113,27 +114,36 @@ class AudioOutputManager @Inject constructor(
             try {
                 Log.d(TAG, "=== Refreshing Available Devices ===")
                 
-                val devices = mutableListOf<com.example.purrytify.domain.model.AudioDeviceInfo>()
+                val allDevices = mutableListOf<LocalAudioDeviceInfo>()
                 
-                // Always add built-in speaker (this will be null for ExoPlayer, meaning default routing)
-                val speakerDevice = createBuiltInSpeakerDevice()
-                devices.add(speakerDevice)
-                
-                // Add actual audio devices from the system
+                // Add actual audio devices from the system first
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                    addSystemAudioDevices(devices)
+                    addSystemAudioDevices(allDevices)
                 }
                 
+                // Check if we found a built-in speaker from system devices
+                val hasBuiltInSpeaker = allDevices.any { it.type == AudioDeviceType.BUILT_IN_SPEAKER }
+                
+                // Only add manual built-in speaker if system didn't provide one
+                if (!hasBuiltInSpeaker) {
+                    val speakerDevice = createBuiltInSpeakerDevice()
+                    allDevices.add(speakerDevice)
+                    Log.d(TAG, "Added manual built-in speaker (system didn't provide one)")
+                }
+                
+                // Deduplicate devices (remove duplicates based on name and type)
+                val deduplicatedDevices = deduplicateDevices(allDevices)
+                
                 // Determine which device should be marked as active
-                val activeDevice = determineActiveDevice(devices)
+                val activeDevice = determineActiveDevice(deduplicatedDevices)
                 
                 // Update state
                 withContext(Dispatchers.Main) {
-                    _availableDevices.value = devices
+                    _availableDevices.value = deduplicatedDevices
                     _activeDevice.value = activeDevice
                     
-                    Log.d(TAG, "Found ${devices.size} devices, active: ${activeDevice?.name}")
-                    devices.forEach { device ->
+                    Log.d(TAG, "Found ${deduplicatedDevices.size} devices (after deduplication), active: ${activeDevice?.name}")
+                    deduplicatedDevices.forEach { device ->
                         Log.d(TAG, "Device: ${device.name} (${device.type}) - Active: ${device.isActive}")
                     }
                 }
@@ -148,10 +158,90 @@ class AudioOutputManager @Inject constructor(
     }
     
     /**
+     * Deduplicate devices by removing duplicates based on name and prioritizing certain types
+     */
+    private fun deduplicateDevices(devices: List<LocalAudioDeviceInfo>): List<LocalAudioDeviceInfo> {
+        val deviceGroups = devices.groupBy { device ->
+            // Group by name, but normalize it first
+            normalizeDeviceName(device.name)
+        }
+        
+        val deduplicatedDevices = mutableListOf<LocalAudioDeviceInfo>()
+        
+        deviceGroups.forEach { (normalizedName, deviceGroup) ->
+            if (deviceGroup.size == 1) {
+                // No duplicates, add as-is
+                deduplicatedDevices.add(deviceGroup.first())
+            } else {
+                // Multiple devices with same name - choose the best one
+                val bestDevice = chooseBestDevice(deviceGroup)
+                deduplicatedDevices.add(bestDevice)
+                
+                Log.d(TAG, "Deduplicated '$normalizedName': chose ${bestDevice.type} over ${deviceGroup.filter { it != bestDevice }.map { it.type }}")
+            }
+        }
+        
+        return deduplicatedDevices.sortedBy { device ->
+            // Sort by priority: Speaker, Bluetooth, Wired, USB, Unknown
+            when (device.type) {
+                AudioDeviceType.BUILT_IN_SPEAKER -> 0
+                AudioDeviceType.BLUETOOTH_SPEAKER -> 1
+                AudioDeviceType.BLUETOOTH_HEADSET -> 2
+                AudioDeviceType.WIRED_HEADSET -> 3
+                AudioDeviceType.USB_DEVICE -> 4
+                AudioDeviceType.UNKNOWN -> 5
+            }
+        }
+    }
+    
+    /**
+     * Normalize device name for comparison (remove model numbers, etc.)
+     */
+    private fun normalizeDeviceName(name: String): String {
+        return when {
+            // Normalize built-in speaker names
+            name.contains("Speaker", ignoreCase = true) || 
+            name.contains("SM-", ignoreCase = true) ||
+            name.equals("Phone Speaker", ignoreCase = true) -> "Phone Speaker"
+            
+            // Keep other device names as-is, but clean them up
+            else -> name.trim()
+        }
+    }
+    
+    /**
+     * Choose the best device from a group of duplicates
+     */
+    private fun chooseBestDevice(devices: List<LocalAudioDeviceInfo>): LocalAudioDeviceInfo {
+        // Priority order for device types (higher number = higher priority)
+        val typePriority = mapOf(
+            AudioDeviceType.BUILT_IN_SPEAKER to 5,
+            AudioDeviceType.BLUETOOTH_SPEAKER to 4,  // Prefer A2DP over SCO for music
+            AudioDeviceType.BLUETOOTH_HEADSET to 3,
+            AudioDeviceType.WIRED_HEADSET to 2,
+            AudioDeviceType.USB_DEVICE to 1,
+            AudioDeviceType.UNKNOWN to 0
+        )
+        
+        // For built-in speaker, prefer the one with systemAudioDeviceInfo (real system device)
+        if (devices.all { it.type == AudioDeviceType.BUILT_IN_SPEAKER }) {
+            val systemDevice = devices.find { it.systemAudioDeviceInfo != null }
+            if (systemDevice != null) {
+                return systemDevice.copy(name = "Phone Speaker") // Normalize the name
+            }
+        }
+        
+        // For other devices, choose based on type priority
+        return devices.maxByOrNull { device ->
+            typePriority[device.type] ?: 0
+        } ?: devices.first()
+    }
+    
+    /**
      * Create built-in speaker device info
      */
-    private fun createBuiltInSpeakerDevice(): com.example.purrytify.domain.model.AudioDeviceInfo {
-        return com.example.purrytify.domain.model.AudioDeviceInfo(
+    private fun createBuiltInSpeakerDevice(): LocalAudioDeviceInfo {
+        return LocalAudioDeviceInfo(
             id = 0,
             name = "Phone Speaker",
             type = AudioDeviceType.BUILT_IN_SPEAKER,
@@ -165,7 +255,7 @@ class AudioOutputManager @Inject constructor(
      * Add audio devices from system AudioManager (API 23+)
      */
     @RequiresApi(Build.VERSION_CODES.M)
-    private fun addSystemAudioDevices(devices: MutableList<com.example.purrytify.domain.model.AudioDeviceInfo>) {
+    private fun addSystemAudioDevices(devices: MutableList<LocalAudioDeviceInfo>) {
         try {
             val audioDevices = audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS)
             
@@ -206,10 +296,10 @@ class AudioOutputManager @Inject constructor(
     private fun createDeviceInfo(
         systemDevice: SystemAudioDeviceInfo, 
         type: AudioDeviceType
-    ): com.example.purrytify.domain.model.AudioDeviceInfo {
+    ): LocalAudioDeviceInfo {
         val deviceName = systemDevice.productName?.toString() ?: type.getDisplayName()
         
-        return com.example.purrytify.domain.model.AudioDeviceInfo(
+        return LocalAudioDeviceInfo(
             id = systemDevice.id,
             name = deviceName,
             type = type,
@@ -223,7 +313,7 @@ class AudioOutputManager @Inject constructor(
      * Determine which device should be marked as active
      * This is based on which device we've set as preferred, or system defaults
      */
-    private fun determineActiveDevice(devices: List<com.example.purrytify.domain.model.AudioDeviceInfo>): com.example.purrytify.domain.model.AudioDeviceInfo? {
+    private fun determineActiveDevice(devices: List<LocalAudioDeviceInfo>): LocalAudioDeviceInfo? {
         // If we have a preferred device set, mark it as active
         currentPreferredDevice?.let { preferred ->
             val matchingDevice = devices.find { it.id == preferred.id && it.type == preferred.type }
@@ -262,7 +352,7 @@ class AudioOutputManager @Inject constructor(
     /**
      * Switch to selected audio device using ExoPlayer's setPreferredAudioDevice
      */
-    fun switchToDevice(deviceInfo: com.example.purrytify.domain.model.AudioDeviceInfo) {
+    fun switchToDevice(deviceInfo: LocalAudioDeviceInfo) {
         externalScope.launch(Dispatchers.Main) {
             try {
                 Log.d(TAG, "=== Switching to device: ${deviceInfo.name} (${deviceInfo.type}) ===")
@@ -301,7 +391,7 @@ class AudioOutputManager @Inject constructor(
     /**
      * Handle device disconnection by switching to a fallback device
      */
-    fun handleDeviceDisconnection(deviceInfo: com.example.purrytify.domain.model.AudioDeviceInfo) {
+    fun handleDeviceDisconnection(deviceInfo: LocalAudioDeviceInfo) {
         externalScope.launch {
             try {
                 Log.d(TAG, "Device disconnected: ${deviceInfo.name}")

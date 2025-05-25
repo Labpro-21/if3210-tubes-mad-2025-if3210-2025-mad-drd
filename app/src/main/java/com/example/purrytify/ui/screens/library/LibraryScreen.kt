@@ -189,7 +189,6 @@ fun LibraryScreen(
                                         layoutManager = LinearLayoutManager(themedContext)
                                         adapter = SongsAdapter(songs, currentPlayingSong) { song ->
                                             viewModel.playSong(song)
-                                            onNavigateToPlayer(song.id)
                                         }
                                     }
                                 } catch (e: Exception) {

@@ -56,15 +56,15 @@ fun HomeScreen(
     val currentPlayingSong by viewModel.currentPlayingSong.collectAsState()
     val userCountry by viewModel.userCountry.collectAsState()
     val isCountrySongsAvailable by viewModel.isCountrySongsAvailable.collectAsState()
-    
+
     // Get country name for display
     val countryName = CountryUtils.getCountryNameFromCode(userCountry) ?: userCountry
-    
+
     // Reset home when recomposing
     LaunchedEffect(Unit) {
         viewModel.refreshSongs()
     }
-    
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -114,7 +114,7 @@ fun HomeScreen(
                 ) {
                     item {
                         Spacer(modifier = Modifier.height(24.dp))
-                        
+
                         // Charts Section
                         Text(
                             text = "Charts",
@@ -122,9 +122,9 @@ fun HomeScreen(
                             color = PurrytifyWhite,
                             fontWeight = FontWeight.Bold
                         )
-                        
+
                         Spacer(modifier = Modifier.height(16.dp))
-                        
+
                         // Charts cards row
                         LazyRow(
                             horizontalArrangement = Arrangement.spacedBy(16.dp)
@@ -139,7 +139,7 @@ fun HomeScreen(
                                     onClick = { onNavigateToTopSongs("global") }
                                 )
                             }
-                            
+
                             // Country Top 10 Card (if available)
                             item {
                                 ChartCard(
@@ -150,7 +150,7 @@ fun HomeScreen(
                                     onClick = { onNavigateToTopSongs("country") }
                                 )
                             }
-                            
+
                             // Daily Playlist Card
                             item {
                                 ChartCard(
@@ -162,9 +162,9 @@ fun HomeScreen(
                                 )
                             }
                         }
-                        
+
                         Spacer(modifier = Modifier.height(32.dp))
-                        
+
                         // New Songs Section
                         Text(
                             text = "New songs",
@@ -172,10 +172,10 @@ fun HomeScreen(
                             color = PurrytifyWhite,
                             fontWeight = FontWeight.Bold
                         )
-                        
+
                         Spacer(modifier = Modifier.height(16.dp))
                     }
-                    
+
                     // New songs horizontal list
                     item {
                         if (newSongs.isEmpty()) {
@@ -192,17 +192,16 @@ fun HomeScreen(
                                     NewSongItem(
                                         song = song,
                                         isPlaying = currentPlayingSong?.id == song.id,
-                                        onClick = { 
+                                        onClick = {
                                             viewModel.playFromNewSongs(song)
-                                            onNavigateToPlayer(song.id)
                                         }
                                     )
                                 }
                             }
                         }
-                        
+
                         Spacer(modifier = Modifier.height(32.dp))
-                        
+
                         // Recently Played Section
                         Text(
                             text = "Recently played",
@@ -210,10 +209,10 @@ fun HomeScreen(
                             color = PurrytifyWhite,
                             fontWeight = FontWeight.Bold
                         )
-                        
+
                         Spacer(modifier = Modifier.height(16.dp))
                     }
-                    
+
                     // Recently played songs vertical list
                     if (recentlyPlayedSongs.isEmpty()) {
                         item {
@@ -229,14 +228,13 @@ fun HomeScreen(
                             SongListItem(
                                 song = song,
                                 isPlaying = currentPlayingSong?.id == song.id,
-                                onClick = { 
+                                onClick = {
                                     viewModel.playFromRecentlyPlayed(song)
-                                    onNavigateToPlayer(song.id)
                                 }
                             )
                         }
                     }
-                    
+
                     // Bottom spacer for mini player
                     item {
                         Spacer(modifier = Modifier.height(80.dp))
@@ -283,7 +281,7 @@ fun ChartCard(
             )
         }
     }
-    
+
     Box(
         modifier = Modifier
             .size(140.dp) // Square size
@@ -307,7 +305,7 @@ fun ChartCard(
                 )
             }
         }
-        
+
         // Text content - always at the bottom
         Column(
             modifier = Modifier
@@ -323,7 +321,7 @@ fun ChartCard(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
-            
+
             Text(
                 text = subtitle,
                 style = Typography.bodySmall,

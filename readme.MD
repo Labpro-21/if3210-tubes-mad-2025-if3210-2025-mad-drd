@@ -46,15 +46,19 @@ Fitur utama dari aplikasi Purrytify meliputi:
 **Contoh:**
 
 Screenshot Home
+
 ![Screenshot Home](screenshots/Home.jpg)
 
 Screenshot Library
+
 ![Screenshot Library](screenshots/Library.jpg)
 
 Screenshot Profile
+
 ![Screenshot Profile](screenshots/Profile.jpg) 
 
 Screenshot Player
+
 ![Screenshot Player](screenshots/Player.jpg) 
 
 ## Pembagian Kerja Anggota Kelompok dan Jam Pengerjaan
